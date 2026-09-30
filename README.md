@@ -10,6 +10,6 @@
 - **AI Financial Assistant:** Conversational agent providing weekly spending summaries and real-time affordability advice.
 
 ## Contributors
-- **Shadman Sohel** — Scrum Master & Developer
-- **Jennifer Lay** — Developer
-- **Ty Tshiamala** — Developer
+- **Shadman Sohel**
+- **Jennifer Lay**
+- **Ty Tshiamala**
