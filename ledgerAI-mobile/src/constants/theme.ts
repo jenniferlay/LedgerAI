@@ -1,65 +1,202 @@
+import { TextStyle } from 'react-native';
+
+export const colors = {
+  // Primary
+  primary: '#4edea3',
+  onPrimary: '#003824',
+  primaryContainer: '#10b981',
+  onPrimaryContainer: '#00422b',
+  primaryFixed: '#6ffbbe',
+  primaryFixedDim: '#4edea3',
+  onPrimaryFixed: '#002113',
+  onPrimaryFixedVariant: '#005236',
+  inversePrimary: '#006c49',
+
+  // Secondary
+  secondary: '#95d3ba',
+  onSecondary: '#003829',
+  secondaryContainer: '#0b513d',
+  onSecondaryContainer: '#83c2a9',
+  secondaryFixed: '#b0f0d6',
+  secondaryFixedDim: '#95d3ba',
+  onSecondaryFixed: '#002117',
+  onSecondaryFixedVariant: '#0b513d',
+
+  // Tertiary
+  tertiary: '#45dfa4',
+  onTertiary: '#003825',
+  tertiaryContainer: '#00b982',
+  onTertiaryContainer: '#00422c',
+  tertiaryFixed: '#68fcbf',
+  tertiaryFixedDim: '#45dfa4',
+  onTertiaryFixed: '#002114',
+  onTertiaryFixedVariant: '#005137',
+
+  // Surface & Background
+  background: '#101418',
+  onBackground: '#e0e3e8',
+  surface: '#101418',
+  surfaceDim: '#101418',
+  surfaceBright: '#363a3e',
+  surfaceContainerLowest: '#0b0f13',
+  surfaceContainerLow: '#181c20',
+  surfaceContainer: '#1c2024',
+  surfaceContainerHigh: '#262a2f',
+  surfaceContainerHighest: '#31353a',
+  surfaceVariant: '#31353a',
+  onSurface: '#e0e3e8',
+  onSurfaceVariant: '#bbcabf',
+  surfaceTint: '#4edea3',
+  inverseSurface: '#e0e3e8',
+  inverseOnSurface: '#2d3135',
+
+  // Outline & Error
+  outline: '#86948a',
+  outlineVariant: '#3c4a42',
+  error: '#ffb4ab',
+  onError: '#690005',
+  errorContainer: '#93000a',
+  onErrorContainer: '#ffdad6',
+} as const;
+
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Converted from rem to unitless pixels (1rem = 16px)
  */
+export const spacing = {
+  xs: 4,      // 0.25rem
+  sm: 8,      // 0.5rem
+  md: 16,     // 1rem
+  lg: 24,     // 1.5rem
+  xl: 36,     // 2.25rem
+  margin: 20, // 1.25rem
+  gutter: 16, // 1rem
+} as const;
 
-import '@/global.css';
+export const borderRadius = {
+  DEFAULT: 4, // 0.25rem
+  lg: 8,      // 0.5rem
+  xl: 12,     // 0.75rem
+  full: 9999,
+} as const;
 
-import { Platform } from 'react-native';
+/**
+ * Note: Ensure you load the exact font weights via expo-font or react-native-asset.
+ * On Android/iOS, custom fonts often require weight-specific family names
+ * (e.g., 'PlusJakartaSans-Bold') depending on your font setup.
+ */
+export const fontFamilies = {
+  jakarta: 'Plus Jakarta Sans',
+  inter: 'Inter',
+} as const;
 
-export const Colors = {
-  light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+export const typography: Record<string, TextStyle> = {
+  headlineXl: {
+    fontFamily: fontFamilies.jakarta,
+    fontSize: 40,
+    lineHeight: 48,
+    letterSpacing: -1.2, // -0.03em * 40
+    fontWeight: '700',
   },
-  dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+  headlineXlMobile: {
+    fontFamily: fontFamilies.jakarta,
+    fontSize: 32,
+    lineHeight: 40,
+    letterSpacing: -0.8, // -0.025em * 32
+    fontWeight: '700',
+  },
+  headlineLg: {
+    fontFamily: fontFamilies.jakarta,
+    fontSize: 32,
+    lineHeight: 40,
+    letterSpacing: -0.64, // -0.02em * 32
+    fontWeight: '600',
+  },
+  headlineLgMobile: {
+    fontFamily: fontFamilies.jakarta,
+    fontSize: 26,
+    lineHeight: 34,
+    letterSpacing: -0.52, // -0.02em * 26
+    fontWeight: '600',
+  },
+  headlineMd: {
+    fontFamily: fontFamilies.jakarta,
+    fontSize: 22,
+    lineHeight: 30,
+    letterSpacing: -0.33, // -0.015em * 22
+    fontWeight: '600',
+  },
+  headlineSm: {
+    fontFamily: fontFamilies.jakarta,
+    fontSize: 18,
+    lineHeight: 26,
+    letterSpacing: -0.18, // -0.01em * 18
+    fontWeight: '600',
+  },
+  metricDisplay: {
+    fontFamily: fontFamilies.jakarta,
+    fontSize: 36,
+    lineHeight: 44,
+    letterSpacing: -1.08, // -0.03em * 36
+    fontWeight: '700',
+  },
+  metricDisplayMobile: {
+    fontFamily: fontFamilies.jakarta,
+    fontSize: 28,
+    lineHeight: 36,
+    letterSpacing: -0.7, // -0.025em * 28
+    fontWeight: '700',
+  },
+  bodyLg: {
+    fontFamily: fontFamilies.inter,
+    fontSize: 16,
+    lineHeight: 24,
+    letterSpacing: -0.16, // -0.01em * 16
+    fontWeight: '400',
+  },
+  bodyMd: {
+    fontFamily: fontFamilies.inter,
+    fontSize: 14,
+    lineHeight: 20,
+    letterSpacing: 0,
+    fontWeight: '400',
+  },
+  bodySm: {
+    fontFamily: fontFamilies.inter,
+    fontSize: 12,
+    lineHeight: 18,
+    letterSpacing: 0.12, // 0.01em * 12
+    fontWeight: '400',
+  },
+  labelLg: {
+    fontFamily: fontFamilies.inter,
+    fontSize: 14,
+    lineHeight: 20,
+    letterSpacing: 0.14, // 0.01em * 14
+    fontWeight: '600',
+  },
+  labelMd: {
+    fontFamily: fontFamilies.inter,
+    fontSize: 12,
+    lineHeight: 16,
+    letterSpacing: 0.24, // 0.02em * 12
+    fontWeight: '500',
+  },
+  labelSm: {
+    fontFamily: fontFamilies.inter,
+    fontSize: 10,
+    lineHeight: 14,
+    letterSpacing: 0.6, // 0.06em * 10
+    fontWeight: '600',
   },
 } as const;
 
-export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
-
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-});
-
-export const Spacing = {
-  half: 2,
-  one: 4,
-  two: 8,
-  three: 16,
-  four: 24,
-  five: 32,
-  six: 64,
+export const theme = {
+  colors,
+  spacing,
+  borderRadius,
+  fontFamilies,
+  typography,
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+export type AppTheme = typeof theme;
+export default theme;
