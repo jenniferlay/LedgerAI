@@ -10,7 +10,9 @@ From the `backend-api` directory:
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+Copy-Item .env.example .env
+# Set DATABASE_URL in .env to your PostgreSQL connection string.
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --env-file .env
 ```
 
 Then open:
@@ -23,15 +25,41 @@ Then open:
 ```text
 backend-api/
 ├── app/
+│   ├── db/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   └── database.py
+│   ├── auth/
+│   │   ├── models.py
+│   │   ├── routes.py
+│   │   ├── schemas.py
+│   │   └── security.py
 │   └── main.py
+├── sql/
+│   └── users.sql
+├── .env.example
 ├── .venv/
 ├── requirements.txt
 └── README.md
 ```
 
+## Database connections
+
+- `app.db.database` creates an asynchronous SQLAlchemy engine and `SessionLocal` from `DATABASE_URL`, using asyncpg.
+- Plain PostgreSQL URLs are configured to require SSL. Existing `sslmode` query settings are translated to asyncpg's `ssl` option.
+- Inject a request-scoped session into route handlers with `from app.db.database import get_db` and `db: AsyncSession = Depends(get_db)`.
+- The `get_db` dependency always closes its session, including when a request fails. Commit or roll back explicitly in the service or route that owns each transaction.
+- `Base` in `app.db.base` is the shared declarative base for ORM models. Apply schema changes through migrations or reviewed SQL scripts; the API does not create or alter tables at startup.
+- Keep `.env` out of version control. `.env.example` contains only a placeholder.
+
+## Authentication
+
+- `POST /auth/login` accepts JSON with an `email` and `password`, checks the user against the existing `users` table, and returns a 30-minute HS256 bearer token.
+- Passwords in `users.password_hash` must use the Argon2 format supported by `pwdlib`.
+- Set `JWT_SECRET_KEY` to a long, random secret in `.env`; never use an example placeholder in a deployed environment.
+- Run `sql/users.sql` against PostgreSQL before using the login route.
+
 ## Notes
 
-- The API currently exposes a simple health-check endpoint at `/`.
+- The API exposes a health-check endpoint at `/` and an authentication endpoint at `/auth/login`.
 - The app is configured to run with FastAPI and reload during development.
-
-This README is intentionally minimal and will be expanded later as the backend grows.
