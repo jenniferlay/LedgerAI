@@ -12,8 +12,10 @@ python -m venv .venv
 pip install -r requirements.txt
 Copy-Item .env.example .env
 # Set DATABASE_URL in .env to your PostgreSQL connection string.
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload --env-file .env
+fastapi dev main.py
 ```
+
+Run the command from the `backend-api` directory. The app reads its configuration from `.env`.
 
 Then open:
 
