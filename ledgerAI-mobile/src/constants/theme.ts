@@ -67,7 +67,8 @@ export const spacing = {
   sm: 8,      // 0.5rem
   md: 16,     // 1rem
   lg: 24,     // 1.5rem
-  xl: 36,     // 2.25rem
+  xl: 42,     // 2.25rem
+  xxl: 80,    // 5rem
   margin: 20, // 1.25rem
   gutter: 16, // 1rem
 } as const;

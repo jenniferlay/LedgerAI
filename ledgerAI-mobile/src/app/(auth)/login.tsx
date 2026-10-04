@@ -14,6 +14,9 @@ import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import theme from '../../constants/theme';
 
+// Swap for theme.colors.error if your theme defines one
+const ERROR_COLOR = '#BA1A1A';
+
 export default function LoginScreen() {
   const router = useRouter();
 
@@ -23,8 +26,16 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [focusedField, setFocusedField] = useState<'email' | 'name' | 'password' | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = () => router.replace('/(app)');
+  // TODO: replace with real auth; on success call router.replace('/(app)')
+  const handleSubmit = () => {
+    setError(
+      isLogin
+        ? 'Invalid email or password. Please try again.'
+        : 'Unable to create account. Please check your details.'
+    );
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -63,7 +74,10 @@ export default function LoginScreen() {
                 <Pressable
                   key={label}
                   style={[styles.tab, active && styles.tabActive]}
-                  onPress={() => setIsLogin(label === 'Login')}
+                  onPress={() => {
+                    setIsLogin(label === 'Login');
+                    setError(null);
+                  }}
                 >
                   <Text style={[styles.tabText, active && styles.tabTextActive]}>
                     {label}
@@ -191,6 +205,14 @@ export default function LoginScreen() {
               </View>
             </View>
 
+            {/* Error Message */}
+            {error && (
+              <View style={styles.errorBox} accessibilityRole="alert">
+                <MaterialIcons name="error-outline" size={18} color={ERROR_COLOR} />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
+
             {/* Primary CTA */}
             <Pressable
               style={({ pressed }) => [
@@ -225,7 +247,8 @@ const styles = StyleSheet.create({
   },
   container: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: theme.spacing.xxl,
     paddingHorizontal: theme.spacing.margin,
     paddingBottom: theme.spacing.lg,
   },
@@ -319,6 +342,20 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     ...theme.typography.bodyMd,
     color: theme.colors.onSurface,
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: theme.borderRadius.xl,
+    backgroundColor: 'rgba(186, 26, 26, 0.12)',
+  },
+  errorText: {
+    flex: 1,
+    ...theme.typography.bodySm,
+    color: ERROR_COLOR,
   },
   submitBtn: {
     marginTop: theme.spacing.xs,
