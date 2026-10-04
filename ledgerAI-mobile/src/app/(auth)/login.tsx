@@ -19,9 +19,10 @@ export default function LoginScreen() {
 
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null);
+  const [focusedField, setFocusedField] = useState<'email' | 'name' | 'password' | null>(null);
 
   const handleSubmit = () => router.replace('/(app)');
 
@@ -62,7 +63,7 @@ export default function LoginScreen() {
                 <Pressable
                   key={label}
                   style={[styles.tab, active && styles.tabActive]}
-                  onPress={() => setIsLogin(idx === 0)}
+                  onPress={() => setIsLogin(label === 'Login')}
                 >
                   <Text style={[styles.tabText, active && styles.tabTextActive]}>
                     {label}
@@ -106,6 +107,40 @@ export default function LoginScreen() {
                 />
               </View>
             </View>
+
+            {/* Name Field */}
+            {!isLogin && (
+              <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Name</Text>
+              <View
+                style={[
+                  styles.inputBox,
+                  focusedField === 'name' && styles.inputBoxFocused,
+                ]}
+              >
+                <MaterialIcons
+                  name="person-outline"
+                  size={20}
+                  color={
+                    focusedField === 'name'
+                      ? theme.colors.primary
+                      : theme.colors.outline
+                  }
+                />
+                <TextInput
+                  style={styles.input}
+                  placeholder="John Doe"
+                  placeholderTextColor={theme.colors.outline}
+                  keyboardType="default"
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  value={name}
+                  onChangeText={setName}
+                  onFocus={() => setFocusedField('name')}
+                  onBlur={() => setFocusedField(null)}
+                />
+              </View>
+            </View>)}
 
             {/* Password Field */}
             <View style={styles.fieldGroup}>
