@@ -22,6 +22,15 @@ Then open:
 - http://localhost:8000
 - http://localhost:8000/docs
 
+## Tests
+
+From the `backend-api` directory, install the development dependencies and run the unit tests:
+
+```powershell
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
 ## Project structure
 
 ```text
@@ -41,7 +50,13 @@ backend-api/
 │       ├── routes.py
 │       ├── schemas.py
 │       └── service.py
+├── tests/
+│   └── unit/
+│       └── expenses/
+│           └── test_service.py
 ├── main.py
+├── pytest.ini
+├── requirements-dev.txt
 ├── sql/
 │   └── users.sql
 ├── .env.example
