@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   StyleSheet,
   ScrollView,
@@ -10,16 +9,12 @@ import {
   Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import theme from '../../constants/theme';
-
-// Swap for theme.colors.error if your theme defines one
-const ERROR_COLOR = '#BA1A1A';
+import LoginForm, { type AuthFormProps } from '../../components/auth/LoginForm';
+import SignupForm from '../../components/auth/SignupForm';
 
 export default function LoginScreen() {
-  const router = useRouter();
-
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -28,13 +23,27 @@ export default function LoginScreen() {
   const [focusedField, setFocusedField] = useState<'email' | 'name' | 'password' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // TODO: replace with real auth; on success call router.replace('/(app)')
   const handleSubmit = () => {
     setError(
       isLogin
         ? 'Invalid email or password. Please try again.'
         : 'Unable to create account. Please check your details.'
     );
+  };
+
+  const formProps: AuthFormProps = {
+    email,
+    setEmail,
+    name,
+    setName,
+    password,
+    setPassword,
+    showPassword,
+    setShowPassword,
+    focusedField,
+    setFocusedField,
+    error,
+    onSubmit: handleSubmit,
   };
 
   return (
@@ -48,7 +57,6 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* Header & Logo Placeholder */}
           <View style={styles.header}>
             <View style={styles.logoBox}>
               <MaterialIcons
@@ -61,12 +69,9 @@ export default function LoginScreen() {
               <Text style={styles.title}>Ledger</Text>
               <Text style={[styles.title, styles.titleAccent]}>AI</Text>
             </View>
-            <Text style={styles.subtitle}>
-              Your Wealth, your way.
-            </Text>
+            <Text style={styles.subtitle}>Your Wealth, your way.</Text>
           </View>
 
-          {/* Segmented Mode Switcher */}
           <View style={styles.tabBar}>
             {(['Login', 'Sign Up'] as const).map((label, idx) => {
               const active = isLogin ? idx === 0 : idx === 1;
@@ -87,150 +92,11 @@ export default function LoginScreen() {
             })}
           </View>
 
-          {/* Form */}
-          <View style={styles.form}>
-            {/* Email Field */}
-            <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Email</Text>
-              <View
-                style={[
-                  styles.inputBox,
-                  focusedField === 'email' && styles.inputBoxFocused,
-                ]}
-              >
-                <MaterialIcons
-                  name="alternate-email"
-                  size={20}
-                  color={
-                    focusedField === 'email'
-                      ? theme.colors.primary
-                      : theme.colors.outline
-                  }
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="you@example.com"
-                  placeholderTextColor={theme.colors.outline}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  value={email}
-                  onChangeText={setEmail}
-                  onFocus={() => setFocusedField('email')}
-                  onBlur={() => setFocusedField(null)}
-                />
-              </View>
-            </View>
-
-            {/* Name Field */}
-            {!isLogin && (
-              <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Name</Text>
-              <View
-                style={[
-                  styles.inputBox,
-                  focusedField === 'name' && styles.inputBoxFocused,
-                ]}
-              >
-                <MaterialIcons
-                  name="person-outline"
-                  size={20}
-                  color={
-                    focusedField === 'name'
-                      ? theme.colors.primary
-                      : theme.colors.outline
-                  }
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="John Doe"
-                  placeholderTextColor={theme.colors.outline}
-                  keyboardType="default"
-                  autoCapitalize="words"
-                  autoCorrect={false}
-                  value={name}
-                  onChangeText={setName}
-                  onFocus={() => setFocusedField('name')}
-                  onBlur={() => setFocusedField(null)}
-                />
-              </View>
-            </View>)}
-
-            {/* Password Field */}
-            <View style={styles.fieldGroup}>
-              <View style={styles.labelRow}>
-                <Text style={styles.label}>Password</Text>
-                {isLogin && (
-                  <Pressable onPress={() => {}}>
-                    <Text style={styles.forgotText}>Forgot password?</Text>
-                  </Pressable>
-                )}
-              </View>
-              <View
-                style={[
-                  styles.inputBox,
-                  focusedField === 'password' && styles.inputBoxFocused,
-                ]}
-              >
-                <MaterialIcons
-                  name="lock-outline"
-                  size={20}
-                  color={
-                    focusedField === 'password'
-                      ? theme.colors.primary
-                      : theme.colors.outline
-                  }
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="••••••••••••"
-                  placeholderTextColor={theme.colors.outline}
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  value={password}
-                  onChangeText={setPassword}
-                  onFocus={() => setFocusedField('password')}
-                  onBlur={() => setFocusedField(null)}
-                />
-                <Pressable
-                  onPress={() => setShowPassword(!showPassword)}
-                  hitSlop={8}
-                >
-                  <MaterialIcons
-                    name={showPassword ? 'visibility-off' : 'visibility'}
-                    size={20}
-                    color={theme.colors.outline}
-                  />
-                </Pressable>
-              </View>
-            </View>
-
-            {/* Error Message */}
-            {error && (
-              <View style={styles.errorBox} accessibilityRole="alert">
-                <MaterialIcons name="error-outline" size={18} color={ERROR_COLOR} />
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            )}
-
-            {/* Primary CTA */}
-            <Pressable
-              style={({ pressed }) => [
-                styles.submitBtn,
-                pressed && styles.submitBtnPressed,
-              ]}
-              onPress={handleSubmit}
-            >
-              <Text style={styles.submitText}>
-                {isLogin ? 'Sign In' : 'Sign Up'}
-              </Text>
-              <MaterialIcons
-                name="arrow-forward"
-                size={20}
-                color={theme.colors.onPrimary}
-              />
-            </Pressable>
-          </View>
+          {isLogin ? (
+            <LoginForm {...formProps} />
+          ) : (
+            <SignupForm {...formProps} />
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -306,73 +172,5 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: theme.colors.onPrimary,
     fontWeight: '600',
-  },
-  form: {
-    gap: theme.spacing.md,
-  },
-  fieldGroup: {
-    gap: 6,
-  },
-  labelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  label: {
-    ...theme.typography.labelMd,
-    color: theme.colors.onSurfaceVariant,
-  },
-  forgotText: {
-    ...theme.typography.labelSm,
-    color: theme.colors.primary,
-  },
-  inputBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 14,
-    borderRadius: theme.borderRadius.xl,
-    backgroundColor: theme.colors.surfaceContainerLowest,
-  },
-  inputBoxFocused: {
-    backgroundColor: theme.colors.surfaceContainer,
-  },
-  input: {
-    flex: 1,
-    paddingVertical: 14,
-    ...theme.typography.bodyMd,
-    color: theme.colors.onSurface,
-  },
-  errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: theme.borderRadius.xl,
-    backgroundColor: 'rgba(186, 26, 26, 0.12)',
-  },
-  errorText: {
-    flex: 1,
-    ...theme.typography.bodySm,
-    color: ERROR_COLOR,
-  },
-  submitBtn: {
-    marginTop: theme.spacing.xs,
-    paddingVertical: 16,
-    borderRadius: theme.borderRadius.xl,
-    backgroundColor: theme.colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  submitBtnPressed: {
-    backgroundColor: theme.colors.tertiary,
-    transform: [{ scale: 0.98 }],
-  },
-  submitText: {
-    ...theme.typography.labelLg,
-    color: theme.colors.onPrimary,
   },
 });
