@@ -20,7 +20,7 @@ export default function LoginScreen() {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [focusedField, setFocusedField] = useState<'email' | 'name' | 'password' | null>(null);
+  const [focusedField, setFocusedField] = useState<'email' | 'name' | 'password' | 'confirmPassword' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = () => {

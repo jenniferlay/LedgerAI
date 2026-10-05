@@ -9,8 +9,6 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import theme from '../../constants/theme';
 
-const ERROR_COLOR = '#BA1A1A';
-
 export interface AuthFormProps {
   email: string;
   setEmail: (value: string) => void;
@@ -20,8 +18,8 @@ export interface AuthFormProps {
   setPassword: (value: string) => void;
   showPassword: boolean;
   setShowPassword: (value: boolean) => void;
-  focusedField: 'email' | 'name' | 'password' | null;
-  setFocusedField: (value: 'email' | 'name' | 'password' | null) => void;
+  focusedField: 'email' | 'name' | 'password' | 'confirmPassword' | null;
+  setFocusedField: (value: 'email' | 'name' | 'password' | 'confirmPassword' | null) => void;
   error: string | null;
   onSubmit: () => void;
 }
@@ -109,7 +107,7 @@ export default function LoginForm({
 
       {error && (
         <View style={styles.errorBox} accessibilityRole="alert">
-          <MaterialIcons name="error-outline" size={18} color={ERROR_COLOR} />
+          <MaterialIcons name="error-outline" size={18} color={theme.colors.errorText} />
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
@@ -181,7 +179,7 @@ const styles = StyleSheet.create({
   errorText: {
     flex: 1,
     ...theme.typography.bodySm,
-    color: ERROR_COLOR,
+    color: theme.colors.errorText,
   },
   submitBtn: {
     marginTop: theme.spacing.xs,

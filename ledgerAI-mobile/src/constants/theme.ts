@@ -54,6 +54,7 @@ export const colors = {
   outline: '#86948a',
   outlineVariant: '#3c4a42',
   error: '#ffb4ab',
+  errorText: '#BA1A1A',
   onError: '#690005',
   errorContainer: '#93000a',
   onErrorContainer: '#ffdad6',

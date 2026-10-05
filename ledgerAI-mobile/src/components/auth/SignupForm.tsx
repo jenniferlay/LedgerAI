@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,32 @@ import { MaterialIcons } from '@expo/vector-icons';
 import theme from '../../constants/theme';
 import type { AuthFormProps } from './LoginForm';
 
-const ERROR_COLOR = '#BA1A1A';
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function getValidationError(
+  email: string,
+  password: string,
+  confirmPassword: string,
+): string | null {
+  if (!EMAIL_PATTERN.test(email)) {
+    return 'Enter a valid email address.';
+  }
+
+  if (
+    password.length < 8 ||
+    !/[a-z]/.test(password) ||
+    !/[A-Z]/.test(password) ||
+    !/\d/.test(password)
+  ) {
+    return 'Password must be at least 8 characters and include uppercase and lowercase letters and a number.';
+  }
+
+  if (password !== confirmPassword) {
+    return 'Passwords do not match.';
+  }
+
+  return null;
+}
 
 export default function SignupForm({
   email,
@@ -26,6 +51,18 @@ export default function SignupForm({
   error,
   onSubmit,
 }: AuthFormProps) {
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  const handleSubmit = () => {
+    const nextError = getValidationError(email, password, confirmPassword);
+    setValidationError(nextError);
+
+    if (!nextError) {
+      onSubmit();
+    }
+  };
+
   return (
     <View style={styles.form}>
       <View style={styles.fieldGroup}>
@@ -49,7 +86,10 @@ export default function SignupForm({
             autoCapitalize="none"
             autoCorrect={false}
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(value) => {
+              setEmail(value);
+              setValidationError(null);
+            }}
             onFocus={() => setFocusedField('email')}
             onBlur={() => setFocusedField(null)}
           />
@@ -104,7 +144,10 @@ export default function SignupForm({
             secureTextEntry={!showPassword}
             autoCapitalize="none"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(value) => {
+              setPassword(value);
+              setValidationError(null);
+            }}
             onFocus={() => setFocusedField('password')}
             onBlur={() => setFocusedField(null)}
           />
@@ -118,10 +161,40 @@ export default function SignupForm({
         </View>
       </View>
 
-      {error && (
+      <View style={styles.fieldGroup}>
+        <Text style={styles.label}>Confirm password</Text>
+        <View
+          style={[
+            styles.inputBox,
+            focusedField === 'confirmPassword' && styles.inputBoxFocused,
+          ]}
+        >
+          <MaterialIcons
+            name="lock-outline"
+            size={20}
+            color={focusedField === 'confirmPassword' ? theme.colors.primary : theme.colors.outline}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Re-enter your password"
+            placeholderTextColor={theme.colors.outline}
+            secureTextEntry
+            autoCapitalize="none"
+            value={confirmPassword}
+            onChangeText={(value) => {
+              setConfirmPassword(value);
+              setValidationError(null);
+            }}
+            onFocus={() => setFocusedField('confirmPassword')}
+            onBlur={() => setFocusedField(null)}
+          />
+        </View>
+      </View>
+
+      {(validationError || error) && (
         <View style={styles.errorBox} accessibilityRole="alert">
-          <MaterialIcons name="error-outline" size={18} color={ERROR_COLOR} />
-          <Text style={styles.errorText}>{error}</Text>
+          <MaterialIcons name="error-outline" size={18} color={theme.colors.errorText} />
+          <Text style={styles.errorText}>{validationError || error}</Text>
         </View>
       )}
 
@@ -130,7 +203,7 @@ export default function SignupForm({
           styles.submitBtn,
           pressed && styles.submitBtnPressed,
         ]}
-        onPress={onSubmit}
+        onPress={handleSubmit}
       >
         <Text style={styles.submitText}>Sign Up</Text>
         <MaterialIcons
@@ -183,7 +256,7 @@ const styles = StyleSheet.create({
   errorText: {
     flex: 1,
     ...theme.typography.bodySm,
-    color: ERROR_COLOR,
+    color: theme.colors.errorText,
   },
   submitBtn: {
     marginTop: theme.spacing.xs,
