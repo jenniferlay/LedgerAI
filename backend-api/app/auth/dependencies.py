@@ -12,7 +12,6 @@ from app.db.database import get_db
 # auto_error=False so we raise our own consistent 401 instead of FastAPI's default.
 bearer_scheme = HTTPBearer(auto_error=False)
 
-
 async def get_current_user(
   credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
   db: Annotated[AsyncSession, Depends(get_db)],
