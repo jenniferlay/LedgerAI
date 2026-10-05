@@ -6,3 +6,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+INSERT INTO users (userid, username, email, password_hash)
+VALUES (0, 'system', 'system@invalid', '!')
+ON CONFLICT DO NOTHING;
