@@ -20,6 +20,7 @@ export default function RootLayout() {
       console.log('No token and not in auth group, redirecting to login');
       router.replace('/(auth)/login');
     } else if (token && inAuthGroup) {
+      console.log('Token exists and in auth group, redirecting to add-category');
       router.replace('/(app)');
     }
   }, [token, segments]);
