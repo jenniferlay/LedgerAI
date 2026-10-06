@@ -21,7 +21,6 @@ export default function AppHomeScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <ThemedText type="subtitle" style={styles.title}>Overview</ThemedText>
-      <RecentActivity />
       <View style={styles.actions}>
         <Button
           title="Add Category"
