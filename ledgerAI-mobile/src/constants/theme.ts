@@ -60,6 +60,8 @@ export const colors = {
   onErrorContainer: '#ffdad6',
 } as const;
 
+export type ThemeColor = keyof typeof colors;
+
 /**
  * Converted from rem to unitless pixels (1rem = 16px)
  */
