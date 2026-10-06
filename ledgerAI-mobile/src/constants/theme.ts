@@ -73,6 +73,7 @@ export const spacing = {
   xl: 42,     // 2.25rem
   xxl: 80,    // 5rem
   margin: 20, // 1.25rem
+  marginTop: 60, // 1.25rem
   gutter: 16, // 1rem
 } as const;
 

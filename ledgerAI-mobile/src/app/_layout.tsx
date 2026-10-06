@@ -29,10 +29,10 @@ function RootNavigator() {
         </View>
       ) : (
         <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Protected guard={isLoggedIn === true}>
+          <Stack.Protected guard={!isLoggedIn === true}>
             <Stack.Screen name="(app)" />
           </Stack.Protected>
-          <Stack.Protected guard={isLoggedIn === false}>
+          <Stack.Protected guard={!isLoggedIn === false}>
             <Stack.Screen name="(auth)" />
           </Stack.Protected>
         </Stack>

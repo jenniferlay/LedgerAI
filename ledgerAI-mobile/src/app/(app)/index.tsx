@@ -1,8 +1,10 @@
 import React from 'react';
-import { View, Text, Button, StyleSheet } from 'react-native';
+import { Button, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import theme from '../../constants/theme';
 import { useAuth } from '../../context/auth';
+import { ThemedText } from '../../components/themed-text';
+import RecentActivity from '../../components/RecentActivity';
 
 export default function AppHomeScreen() {
   const router = useRouter();
@@ -17,32 +19,35 @@ export default function AppHomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Authenticated Home</Text>
-      <Button
-        title="Add Category"
-        onPress={() => router.push('/(app)/add-category')}
-      />
-      <Button
-        title="Simulate Logout"
-        onPress={() => void handleSignOut()}
-      />
-    </View>
+    <ScrollView contentContainerStyle={styles.container}>
+      <ThemedText type="subtitle" style={styles.title}>Overview</ThemedText>
+      <RecentActivity />
+      <View style={styles.actions}>
+        <Button
+          title="Add Category"
+          onPress={() => router.push('/(app)/add-category')}
+        />
+        <Button
+          title="Simulate Logout"
+          onPress={() => void handleSignOut()}
+        />
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: theme.spacing.md,
+    flexGrow: 1,
+    gap: theme.spacing.lg,
     padding: theme.spacing.margin,
+    paddingTop: theme.spacing.marginTop,
     backgroundColor: theme.colors.surface,
   },
   title: {
-    ...theme.typography.headlineSm,
     color: theme.colors.onSurface,
-    marginBottom: theme.spacing.sm,
+  },
+  actions: {
+    gap: theme.spacing.sm,
   },
 });
