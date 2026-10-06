@@ -19,19 +19,21 @@ export default function AppHomeScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <ThemedText type="subtitle" style={styles.title}>Overview</ThemedText>
-      <View style={styles.actions}>
-        <Button
-          title="Add Category"
-          onPress={() => router.push('/(app)/add-category')}
-        />
-        <Button
-          title="Simulate Logout"
-          onPress={() => void handleSignOut()}
-        />
-      </View>
-    </ScrollView>
+    <View style={styles.container}>
+      <Text style={styles.title}>Authenticated Home</Text>
+      <Button
+        title="Add Expense"
+        onPress={() => router.push('/(app)/add-expense')}
+      />
+      <Button
+        title="Add Category"
+        onPress={() => router.push('/(app)/add-category')}
+      />
+      <Button
+        title="Simulate Logout"
+        onPress={() => void handleSignOut()}
+      />
+    </View>
   );
 }
 

@@ -11,10 +11,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import theme from '../../constants/theme';
+import { useAuth } from '../../context/auth';
 import LoginForm, { type AuthFormProps } from '../../components/auth/LoginForm';
 import SignupForm from '../../components/auth/SignupForm';
 
 export default function LoginScreen() {
+  const { signIn } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
@@ -23,12 +25,18 @@ export default function LoginScreen() {
   const [focusedField, setFocusedField] = useState<'email' | 'name' | 'password' | 'confirmPassword' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = () => {
-    setError(
-      isLogin
-        ? 'Invalid email or password. Please try again.'
-        : 'Unable to create account. Please check your details.'
-    );
+  const handleSubmit = async () => {
+    if (!email.trim() || !password.trim()) {
+      setError('Please enter both email and password.');
+      return;
+    }
+
+    try {
+      // Authenticate session and store token
+      await signIn('dev-access-token');
+    } catch (err) {
+      setError('Failed to sign in. Please try again.');
+    }
   };
 
   const formProps: AuthFormProps = {
