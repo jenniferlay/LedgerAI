@@ -4,8 +4,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import theme from '../../../constants/theme';
 import PressableScale from './PressableScale';
 import SectionHeader, { sectionHeaderStyles } from './SectionHeader';
-import { CATEGORY_ICONS } from './data';
-import type { IconName } from './types';
+import { CATEGORY_ICONS, type IconName } from './data';
 
 const { colors, spacing, borderRadius } = theme;
 

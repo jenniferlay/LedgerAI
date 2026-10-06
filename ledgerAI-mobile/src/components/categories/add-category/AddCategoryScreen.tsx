@@ -3,14 +3,10 @@ import { Alert, KeyboardAvoidingView, Platform, ScrollView, StatusBar, StyleShee
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import theme from '../../../constants/theme';
 import Header, { HEADER_HEIGHT } from './Header';
-import IconPreview from './IconPreview';
-import CategoryNameField from './CategoryNameField';
-import ParentCategoryRow from './ParentCategoryRow';
-import ParentCategoryDrawer from './ParentCategoryDrawer';
+import { CategoryNameField, IconPreview, ParentCategoryRow } from './CategoryFields';
 import IconGrid from './IconGrid';
 import CreateButton from './CreateButton';
-import { PARENT_CATEGORIES } from './data';
-import type { IconName } from './types';
+import { PARENT_CATEGORIES, type IconName } from './data';
 
 const { colors, spacing } = theme;
 
@@ -29,12 +25,8 @@ export default function AddCategoryScreen({ onCancel, onDone }: Props) {
   const insets = useSafeAreaInsets();
   const [name, setName] = useState('Coffee & Roasts');
   const [icon, setIcon] = useState<IconName>('local-cafe');
-  const [isSubcategory] = useState(false);
-  const [parentId, setParentId] = useState(PARENT_CATEGORIES[0].id);
 
-  const parent =
-    PARENT_CATEGORIES.find((category) => category.id === parentId) ??
-    PARENT_CATEGORIES[0];
+  const parent = PARENT_CATEGORIES[0];
 
   const handleDone = () => {
     const trimmedName = name.trim();
@@ -55,7 +47,7 @@ export default function AddCategoryScreen({ onCancel, onDone }: Props) {
     onDone({
       name: trimmedName,
       icon,
-      parentCategoryId: parentId,
+      parentCategoryId: parent.id,
     });
   };
 
@@ -81,12 +73,6 @@ export default function AddCategoryScreen({ onCancel, onDone }: Props) {
           <IconPreview icon={icon} />
           <CategoryNameField value={name} onChangeText={setName} />
           <ParentCategoryRow parent={parent} />
-          <ParentCategoryDrawer
-            visible={isSubcategory}
-            selectedId={parentId}
-            selectedLabel={parent.label}
-            onSelect={setParentId}
-          />
           <IconGrid selected={icon} onSelect={setIcon} />
           <CreateButton onPress={handleDone} />
         </ScrollView>
