@@ -2,9 +2,19 @@ import React from 'react';
 import { View, Text, Button, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import theme from '../../constants/theme';
+import { useAuth } from '../../context/auth';
 
 export default function AppHomeScreen() {
   const router = useRouter();
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Failed to sign out', error);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -15,9 +25,7 @@ export default function AppHomeScreen() {
       />
       <Button
         title="Simulate Logout"
-        onPress={() => {
-          router.replace('/(auth)/login');
-        }}
+        onPress={() => void handleSignOut()}
       />
     </View>
   );

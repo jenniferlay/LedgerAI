@@ -1,36 +1,50 @@
-import { Stack, useRouter, useSegments } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { useEffect } from 'react';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { Text, useColorScheme, View } from 'react-native';
+import { AuthProvider, useAuth } from '../context/auth';
 
-SplashScreen.preventAutoHideAsync();
+void SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+function RootNavigator() {
   const colorScheme = useColorScheme();
-  // Minimal mock token state: change to 'mock-token' to test authenticated flow
-  const [token, setToken] = useState<string | null>(null);
-  const segments = useSegments();
-  const router = useRouter();
+  const { isLoggedIn, authError } = useAuth();
+  const ready = isLoggedIn !== null || authError;
 
   useEffect(() => {
-    const inAuthGroup = (segments[0] as string) === '(auth)';
-
-    if (!token && !inAuthGroup) {
-      console.log('No token and not in auth group, redirecting to login');
-      router.replace('/(auth)/login');
-    } else if (token && inAuthGroup) {
-      console.log('Token exists and in auth group, redirecting to add-category');
-      router.replace('/(app)');
+    if (ready) {
+      void SplashScreen.hideAsync();
     }
-  }, [token, segments]);
+  }, [ready]);
+
+  if (!ready) {
+    return null;
+  }
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(auth)" />
-        <Stack.Screen name="(app)" />
-      </Stack>
+      {authError ? (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <Text>Unable to check saved sign-in information. Please restart the app.</Text>
+        </View>
+      ) : (
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Protected guard={isLoggedIn === true}>
+            <Stack.Screen name="(app)" />
+          </Stack.Protected>
+          <Stack.Protected guard={isLoggedIn === false}>
+            <Stack.Screen name="(auth)" />
+          </Stack.Protected>
+        </Stack>
+      )}
     </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <AuthProvider>
+      <RootNavigator />
+    </AuthProvider>
   );
 }
