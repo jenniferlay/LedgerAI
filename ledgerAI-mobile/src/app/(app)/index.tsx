@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, ScrollView, StyleSheet, View } from 'react-native';
+import { Button, ScrollView, StyleSheet, View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import theme from '../../constants/theme';
 import { useAuth } from '../../context/auth';
