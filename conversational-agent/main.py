@@ -119,4 +119,4 @@ async def voice_main():
     await asyncio.gather(send_mic_audio(), play_agent_voice(), print_live_transcripts())
 
 if __name__ == "__main__":
-  asyncio.run(voice_main())
+  asyncio.run(main())
