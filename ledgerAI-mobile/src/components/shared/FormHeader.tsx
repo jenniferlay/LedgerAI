@@ -2,19 +2,28 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import theme from '../../../constants/theme';
+import { borderRadius, colors, spacing, typography } from '../../constants/theme';
 import PressableScale from './PressableScale';
 
-const { colors, spacing, typography } = theme;
-
-export const HEADER_HEIGHT = 56;
+export const FORM_HEADER_HEIGHT = 56;
 
 interface Props {
+  title: string;
+  actionLabel: string;
+  actionAccessibilityLabel: string;
+  actionScale: number;
   onCancel?: () => void;
   onDone?: () => void;
 }
 
-export default function Header({ onCancel, onDone }: Props) {
+export default function FormHeader({
+  title,
+  actionLabel,
+  actionAccessibilityLabel,
+  actionScale,
+  onCancel,
+  onDone,
+}: Props) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -35,15 +44,16 @@ export default function Header({ onCancel, onDone }: Props) {
           <Text style={styles.cancelText}>Cancel</Text>
         </Pressable>
 
-        <Text style={styles.title}>Add Category</Text>
+        <Text style={styles.title}>{title}</Text>
 
         <PressableScale
-          accessibilityLabel="Save Category"
+          accessibilityLabel={actionAccessibilityLabel}
           accessibilityRole="button"
           onPress={onDone}
+          scale={actionScale}
           style={styles.done}
         >
-          <Text style={styles.doneText}>Done</Text>
+          <Text style={styles.doneText}>{actionLabel}</Text>
         </PressableScale>
       </View>
     </View>
@@ -65,7 +75,7 @@ const styles = StyleSheet.create({
     elevation: 12,
   },
   bar: {
-    height: HEADER_HEIGHT,
+    height: FORM_HEADER_HEIGHT,
     paddingHorizontal: spacing.margin,
     flexDirection: 'row',
     alignItems: 'center',
@@ -91,7 +101,7 @@ const styles = StyleSheet.create({
   done: {
     height: 36,
     paddingHorizontal: spacing.md,
-    borderRadius: theme.borderRadius.full,
+    borderRadius: borderRadius.full,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',

@@ -1,22 +1,13 @@
 import React, { useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import theme from '../../../constants/theme';
-import Header, { HEADER_HEIGHT } from './Header';
+import { Alert } from 'react-native';
+import { spacing } from '../../../constants/theme';
+import AddFormLayout from '../../shared/AddFormLayout';
+import PrimaryActionButton from '../../shared/PrimaryActionButton';
 import AmountField from './AmountField';
 import MerchantField from './MerchantField';
 import NoteField from './NoteField';
 import DateField from './DateField';
 import CategorySelectField from './CategorySelectField';
-import SubmitButton from './SubmitButton';
 import {
   getTodayIsoDate,
   validateAmount,
@@ -31,16 +22,12 @@ import type {
   ExpensePayload,
 } from './types';
 
-const { colors, spacing } = theme;
-
 interface Props {
   onCancel?: () => void;
   onDone?: (expense: ExpensePayload) => void;
 }
 
 export default function AddExpenseScreen({ onCancel, onDone }: Props) {
-  const insets = useSafeAreaInsets();
-
   const [values, setValues] = useState<ExpenseFormValues>({
     amount: '',
     merchant: '',
@@ -106,74 +93,55 @@ export default function AddExpenseScreen({ onCancel, onDone }: Props) {
   };
 
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle="light-content" />
-      <Header onCancel={onCancel} onDone={handleSave} />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={[
-            styles.content,
-            {
-              paddingTop: HEADER_HEIGHT + insets.top + spacing.sm,
-              paddingBottom: spacing.xl + insets.bottom,
-            },
-          ]}
-        >
-          <AmountField
-            value={values.amount}
-            error={errors.amount}
-            onChangeText={(text) => setFieldValue('amount', text)}
-            onBlur={() => handleBlurField('amount')}
-          />
+    <AddFormLayout
+      title="Log Expense"
+      actionLabel="Save"
+      actionAccessibilityLabel="Save Expense"
+      onCancel={onCancel}
+      onDone={handleSave}
+      contentTopSpacing={spacing.sm}
+    >
+      <AmountField
+        value={values.amount}
+        error={errors.amount}
+        onChangeText={(text) => setFieldValue('amount', text)}
+        onBlur={() => handleBlurField('amount')}
+      />
 
-          <MerchantField
-            value={values.merchant}
-            error={errors.merchant}
-            onChangeText={(text) => setFieldValue('merchant', text)}
-            onBlur={() => handleBlurField('merchant')}
-          />
+      <MerchantField
+        value={values.merchant}
+        error={errors.merchant}
+        onChangeText={(text) => setFieldValue('merchant', text)}
+        onBlur={() => handleBlurField('merchant')}
+      />
 
-          <NoteField
-            value={values.note}
-            error={errors.note}
-            onChangeText={(text) => setFieldValue('note', text)}
-            onBlur={() => handleBlurField('note')}
-          />
+      <NoteField
+        value={values.note}
+        error={errors.note}
+        onChangeText={(text) => setFieldValue('note', text)}
+        onBlur={() => handleBlurField('note')}
+      />
 
-          <DateField
-            value={values.spentOn}
-            error={errors.spentOn}
-            onChangeText={(text) => setFieldValue('spentOn', text)}
-            onBlur={() => handleBlurField('spentOn')}
-          />
+      <DateField
+        value={values.spentOn}
+        error={errors.spentOn}
+        onChangeText={(text) => setFieldValue('spentOn', text)}
+        onBlur={() => handleBlurField('spentOn')}
+      />
 
-          <CategorySelectField
-            selectedId={values.categoryId}
-            onSelect={(id) => setFieldValue('categoryId', id)}
-          />
+      <CategorySelectField
+        selectedId={values.categoryId}
+        onSelect={(id) => setFieldValue('categoryId', id)}
+      />
 
-          <SubmitButton onPress={handleSave} isLoading={isSubmitting} />
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+      <PrimaryActionButton
+        label="Save Expense"
+        accessibilityLabel="Save Expense"
+        icon="check"
+        iconPosition="before"
+        onPress={handleSave}
+        isLoading={isSubmitting}
+      />
+    </AddFormLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.surface,
-  },
-  flex: {
-    flex: 1,
-  },
-  content: {
-    paddingHorizontal: spacing.margin,
-    gap: spacing.lg,
-  },
-});

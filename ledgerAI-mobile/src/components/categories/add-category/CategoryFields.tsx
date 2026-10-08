@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import theme from '../../../constants/theme';
-import PressableScale from './PressableScale';
+import PressableScale from '../../shared/PressableScale';
 import type { IconName, ParentCategory } from './data';
 
 const { colors, spacing, borderRadius, typography } = theme;

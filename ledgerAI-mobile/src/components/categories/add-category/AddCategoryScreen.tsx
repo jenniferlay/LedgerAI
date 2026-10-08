@@ -1,14 +1,10 @@
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import theme from '../../../constants/theme';
-import Header, { HEADER_HEIGHT } from './Header';
+import { Alert } from 'react-native';
+import AddFormLayout from '../../shared/AddFormLayout';
+import PrimaryActionButton from '../../shared/PrimaryActionButton';
 import { CategoryNameField, IconPreview, ParentCategoryRow } from './CategoryFields';
 import IconGrid from './IconGrid';
-import CreateButton from './CreateButton';
 import { PARENT_CATEGORIES, type IconName } from './data';
-
-const { colors, spacing } = theme;
 
 export interface CategoryDraft {
   name: string;
@@ -22,7 +18,6 @@ interface Props {
 }
 
 export default function AddCategoryScreen({ onCancel, onDone }: Props) {
-  const insets = useSafeAreaInsets();
   const [name, setName] = useState('Coffee & Roasts');
   const [icon, setIcon] = useState<IconName>('local-cafe');
 
@@ -52,40 +47,24 @@ export default function AddCategoryScreen({ onCancel, onDone }: Props) {
   };
 
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle="light-content" />
-      <Header onCancel={onCancel} onDone={handleDone} />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={[
-            styles.content,
-            {
-              paddingTop: HEADER_HEIGHT + insets.top,
-              paddingBottom: spacing.xl + insets.bottom,
-            },
-          ]}
-        >
-          <IconPreview icon={icon} />
-          <CategoryNameField value={name} onChangeText={setName} />
-          <ParentCategoryRow parent={parent} />
-          <IconGrid selected={icon} onSelect={setIcon} />
-          <CreateButton onPress={handleDone} />
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+    <AddFormLayout
+      title="Add Category"
+      actionLabel="Done"
+      actionAccessibilityLabel="Save Category"
+      actionScale={0.95}
+      onCancel={onCancel}
+      onDone={handleDone}
+    >
+      <IconPreview icon={icon} />
+      <CategoryNameField value={name} onChangeText={setName} />
+      <ParentCategoryRow parent={parent} />
+      <IconGrid selected={icon} onSelect={setIcon} />
+      <PrimaryActionButton
+        label="Create Category"
+        accessibilityLabel="Create Category"
+        icon="arrow-forward"
+        onPress={handleDone}
+      />
+    </AddFormLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.surface },
-  flex: { flex: 1 },
-  content: {
-    paddingHorizontal: spacing.margin,
-    gap: spacing.lg,
-  },
-});

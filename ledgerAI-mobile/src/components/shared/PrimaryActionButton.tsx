@@ -1,20 +1,41 @@
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import theme from '../../../constants/theme';
+import type { ComponentProps } from 'react';
+import { borderRadius, colors, spacing, typography } from '../../constants/theme';
 import PressableScale from './PressableScale';
 
-const { colors, spacing, borderRadius, typography } = theme;
+type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
 interface Props {
-  onPress: () => void;
+  label: string;
+  accessibilityLabel: string;
+  icon: IconName;
+  iconPosition?: 'before' | 'after';
   isLoading?: boolean;
+  onPress: () => void;
 }
 
-export default function SubmitButton({ onPress, isLoading = false }: Props) {
+export default function PrimaryActionButton({
+  label,
+  accessibilityLabel,
+  icon,
+  iconPosition = 'after',
+  isLoading = false,
+  onPress,
+}: Props) {
+  const iconElement = (
+    <MaterialIcons
+      name={icon}
+      size={iconPosition === 'before' ? 22 : 20}
+      color={colors.onPrimary}
+    />
+  );
+
   return (
     <View style={styles.wrapper}>
       <PressableScale
+        accessibilityLabel={accessibilityLabel}
         accessibilityRole="button"
         onPress={onPress}
         disabled={isLoading}
@@ -25,8 +46,9 @@ export default function SubmitButton({ onPress, isLoading = false }: Props) {
           <ActivityIndicator color={colors.onPrimary} size="small" />
         ) : (
           <>
-            <MaterialIcons name="check" size={22} color={colors.onPrimary} />
-            <Text style={styles.text}>Save Expense</Text>
+            {iconPosition === 'before' && iconElement}
+            <Text style={styles.text}>{label}</Text>
+            {iconPosition === 'after' && iconElement}
           </>
         )}
       </PressableScale>
