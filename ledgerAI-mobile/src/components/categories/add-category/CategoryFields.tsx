@@ -63,6 +63,7 @@ const nameFieldStyles = StyleSheet.create({
     color: colors.onSurface,
     letterSpacing: -0.45,
     padding: 0,
+    paddingBottom: 4,
     margin: 0,
   },
   focusRing: {
