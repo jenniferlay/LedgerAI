@@ -1,8 +1,13 @@
 import asyncio
 import pyaudio
 from dotenv import load_dotenv
+import pydantic_ai
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.usage import UsageLimits
+
+# Correctly disable the first-run banner
+pydantic_ai.BANNER_ENABLED = False
+
 
 load_dotenv()
 
