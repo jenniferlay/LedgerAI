@@ -33,6 +33,38 @@ The backend must be running with its database configured and the users table
 created. Signup creates the account and then signs in; both signup and login
 persist the backend-issued access token for authenticated app requests.
 
+## Plaid Link sandbox
+
+The authenticated home screen's **Connect bank** button requests a fresh Link
+token from `POST /link-token` each time it is pressed, then opens Plaid Link.
+The current success handler only confirms success in the UI; it does not store
+or log the returned public token. Token exchange is not implemented yet.
+
+Install the native SDK dependency with:
+
+```bash
+npm install
+npx expo prebuild
+```
+
+Plaid Link uses native code and does not run in Expo Go. Use a development
+build:
+
+- **iOS:** On macOS with Xcode installed, run `npx pod-install`, then
+  `npx expo run:ios` (or build an EAS development client). SDK 12 requires
+  iOS 14 or newer.
+- **Android:** Install Android Studio with Android SDK Platform 34, then run
+  `npx expo run:android` to build and launch the native app. SDK 12 supports
+  Android API 21 and newer; its native module compiles against API 34.
+  React Native autolinking handles the native module; no manual Gradle
+  registration is needed. To use Android OAuth institutions, set a stable
+  `android.package` in `app.json` and register that exact package name in the
+  Plaid Dashboard.
+
+Start the backend and configure `EXPO_PUBLIC_API_URL` as described above.
+Sign in, choose **Connect bank**, and use Plaid sandbox credentials
+`user_good` / `pass_good` in the Link UI.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)
