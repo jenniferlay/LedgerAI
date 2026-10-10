@@ -1,10 +1,51 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import DateTimePicker, {
+  type DateTimePickerEvent,
+} from '@react-native-community/datetimepicker';
+import {
+  Platform,
+  Pressable,
+  Keyboard,
+  StyleSheet,
+  Text,
+  useColorScheme,
+  View,
+} from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import theme from '@/constants/theme';
-import { getTodayIsoDate, getYesterdayIsoDate } from './validation';
+import { getTodayIsoDate } from './validation';
 
 const { colors, spacing, borderRadius, typography } = theme;
+
+function isoToDate(iso: string): Date {
+  if (!iso) {
+    return new Date();
+  }
+
+  const parts = iso.split('-').map(Number);
+  if (parts.length !== 3 || !parts.every(Number.isInteger)) {
+    return new Date();
+  }
+
+  const [year, month, day] = parts;
+  const date = new Date(year, month - 1, day);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return new Date();
+  }
+
+  return date;
+}
+
+function dateToIso(date: Date): string {
+  const year = String(date.getFullYear()).padStart(4, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 interface Props {
   value: string;
@@ -19,82 +60,82 @@ export default function DateField({
   onChangeText,
   onBlur,
 }: Props) {
-  const [focused, setFocused] = useState(false);
-  const today = getTodayIsoDate();
-  const yesterday = getYesterdayIsoDate();
+  const [showPicker, setShowPicker] = useState(false);
+  const colorScheme = useColorScheme();
 
-  const handleBlur = () => {
-    setFocused(false);
-    onBlur?.();
+  const handleFieldPress = () => {
+    if (Platform.OS === 'ios' && showPicker) {
+      setShowPicker(false);
+      onBlur?.();
+      return;
+    }
+
+    Keyboard.dismiss();
+    setShowPicker(true);
+  };
+
+  const handlePickerChange = (
+    event: DateTimePickerEvent,
+    date?: Date,
+  ) => {
+    if (Platform.OS === 'android') {
+      setShowPicker(false);
+      if (event.type === 'set' && date) {
+        onChangeText(dateToIso(date));
+      }
+      onBlur?.();
+      return;
+    }
+
+    if (date) {
+      onChangeText(dateToIso(date));
+      setShowPicker(false);
+      onBlur?.();
+    }
   };
 
   return (
     <View style={styles.wrapper}>
-      <View style={styles.headerRow}>
-        <Text style={styles.label}>Date</Text>
-        <View style={styles.shortcuts}>
-          <Pressable
-            accessibilityRole="button"
-            style={[styles.shortcutPill, value === today && styles.shortcutPillActive]}
-            onPress={() => onChangeText(today)}
-          >
-            <Text
-              style={[
-                styles.shortcutText,
-                value === today && styles.shortcutTextActive,
-              ]}
-            >
-              Today
-            </Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            style={[
-              styles.shortcutPill,
-              value === yesterday && styles.shortcutPillActive,
-            ]}
-            onPress={() => onChangeText(yesterday)}
-          >
-            <Text
-              style={[
-                styles.shortcutText,
-                value === yesterday && styles.shortcutTextActive,
-              ]}
-            >
-              Yesterday
-            </Text>
-          </Pressable>
-        </View>
-      </View>
+      <Text style={styles.label}>Date</Text>
 
       <View
         style={[
           styles.container,
-          focused && styles.containerFocused,
+          showPicker && styles.containerFocused,
           Boolean(error) && styles.containerError,
         ]}
       >
-        <MaterialIcons
-          name="event"
-          size={20}
-          color={focused ? colors.primary : colors.outline}
-          style={styles.icon}
-        />
-        <TextInput
-          accessibilityLabel="Expense date YYYY-MM-DD"
-          style={styles.input}
-          value={value}
-          onChangeText={onChangeText}
-          onFocus={() => setFocused(true)}
-          onBlur={handleBlur}
-          placeholder="YYYY-MM-DD"
-          placeholderTextColor="rgba(134, 148, 138, 0.4)"
-          selectionColor={colors.primary}
-          cursorColor={colors.primary}
-          maxLength={10}
-          returnKeyType="done"
-        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Expense date ${value || 'not selected'}. Tap to change`}
+          onPress={handleFieldPress}
+          style={({ pressed }) => [
+            styles.fieldPressable,
+            pressed && styles.fieldPressablePressed,
+          ]}
+        >
+          <MaterialIcons
+            name="event"
+            size={20}
+            color={showPicker ? colors.primary : colors.outline}
+            style={styles.icon}
+          />
+          <Text style={styles.input}>{value || 'Select a date'}</Text>
+        </Pressable>
       </View>
+      {showPicker && (
+        <View style={styles.pickerContainer}>
+          <DateTimePicker
+            value={isoToDate(value)}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'inline' : 'default'}
+            maximumDate={isoToDate(getTodayIsoDate())}
+            accentColor={colors.primary}
+            themeVariant={colorScheme === 'dark' ? 'dark' : 'light'}
+            onChange={handlePickerChange}
+          />
+        </View>
+      )}
       {Boolean(error) && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
@@ -104,11 +145,9 @@ const styles = StyleSheet.create({
   wrapper: {
     width: '100%',
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  pickerContainer: {
+    width: '100%',
     alignItems: 'center',
-    marginBottom: 6,
   },
   label: {
     ...typography.labelSm,
@@ -116,31 +155,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-  },
-  shortcuts: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
-  shortcutPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.surfaceContainerLow,
-    borderWidth: 1,
-    borderColor: 'rgba(60, 74, 66, 0.3)',
-  },
-  shortcutPillActive: {
-    backgroundColor: colors.primaryContainer,
-    borderColor: colors.primary,
-  },
-  shortcutText: {
-    ...typography.labelSm,
-    color: colors.onSurfaceVariant,
-    fontSize: 11,
-  },
-  shortcutTextActive: {
-    color: colors.onPrimaryContainer,
-    fontWeight: '600',
+    marginBottom: 6,
   },
   container: {
     width: '100%',
@@ -159,6 +174,14 @@ const styles = StyleSheet.create({
   },
   containerError: {
     borderColor: colors.error,
+  },
+  fieldPressable: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  fieldPressablePressed: {
+    opacity: 0.7,
   },
   icon: {
     marginRight: spacing.sm,
