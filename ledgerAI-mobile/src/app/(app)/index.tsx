@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Button, NativeModules, Platform, StyleSheet, Text, View } from 'react-native';
+import { Button, Platform, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import theme from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import PrimaryActionButton from '@/components/shared/PrimaryActionButton';
-import { create, open, type LinkExit } from 'react-native-plaid-link-sdk';
+import type { LinkExit } from 'react-native-plaid-link-sdk';
 import { createLinkToken, exchangePublicToken } from '@/services/plaid-api';
 
 export default function AppHomeScreen() {
@@ -45,29 +45,27 @@ export default function AppHomeScreen() {
   };
 
   const handleConnectBank = async () => {
-    const plaidNativeModule =
-      Platform.OS === 'android' ? NativeModules.PlaidAndroid : NativeModules.RNLinksdk;
-    if (!plaidNativeModule) {
-      setLinkError(
-        'Plaid Link requires a native development build. Expo Go does not include the Plaid SDK; rebuild and launch the app with `npx expo run:android` or `npx expo run:ios`.',
-      );
-      setLinkMessage(null);
-      return;
-    }
-
     setIsConnectingBank(true);
     setLinkError(null);
     setLinkMessage(null);
 
     try {
+      const { createPlaidLinkSession } = await import('react-native-plaid-link-sdk');
       const { link_token } = await createLinkToken();
-      create({ token: link_token });
-      await open({
+      const session = await createPlaidLinkSession({
+        token: link_token,
         onSuccess: (success) => void handlePlaidSuccess(success.publicToken),
         onExit: handlePlaidExit,
+        onEvent: (event) => console.info('Plaid Link event', event.eventName),
       });
+      await session.open();
     } catch (error) {
-      setLinkError(error instanceof Error ? error.message : 'Could not connect to Plaid. Please try again.');
+      const message = error instanceof Error ? error.message : '';
+      setLinkError(
+        message.includes('ReactNativePlaidLinkSdk')
+          ? 'Plaid Link requires a native development build. Expo Go does not include the Plaid SDK; rebuild and launch the app with `npx expo run:android` or `npx expo run:ios`.'
+          : message || 'Could not connect to Plaid. Please try again.',
+      );
     } finally {
       setIsConnectingBank(false);
     }
