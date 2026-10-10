@@ -7,6 +7,16 @@ from app.expenses.models import Category, Expense
 from app.expenses.schemas import ExpenseCreate
 
 
+async def list_categories(db: AsyncSession, user_id: int) -> list[Category]:
+	statement = (
+		select(Category)
+		.where(Category.userid.in_((0, user_id)))
+		.order_by(Category.parent_categoryid, Category.name, Category.categoryid)
+	)
+	result = await db.scalars(statement)
+	return list(result.all())
+
+
 async def create_expense(
 	db: AsyncSession, user_id: int, data: ExpenseCreate
 ) -> Expense:

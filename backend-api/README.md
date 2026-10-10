@@ -82,6 +82,7 @@ backend-api/
 - For development, CORS allows all origins by default so Expo Go on a phone can reach the API. Set `CORS_ORIGINS` to a comma-separated list of trusted origins to restrict browser access when deploying. Credentials remain disabled.
 - `POST /expenses` accepts JSON expense details and requires a bearer token. The expense owner is taken from the verified token; clients must not provide a user ID. If `categoryid` is omitted, it defaults to `1` (the system-wide General category). The API only accepts global or caller-owned categories, and the composite foreign key enforces the same ownership rule for direct SQL writes.
 - `GET /expenses` requires a bearer token and returns only the caller's expenses, newest first. Optional `start_date` and `end_date` filters are inclusive; `categoryid` filters by category; `merchant` performs a case-insensitive substring search. Results are paginated with `limit` (default `100`, maximum `500`) and `offset` (default `0`).
+- `GET /expenses/categories` requires a bearer token and returns global and caller-owned categories with IDs and parent IDs.
 - Passwords in `users.password_hash` must use the Argon2 format supported by `pwdlib`.
 - Set `JWT_SECRET_KEY` to a long, random secret in `.env`; never use an example placeholder in a deployed environment.
 - Run `sql/users.sql` against PostgreSQL before using the login route.

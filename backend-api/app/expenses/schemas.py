@@ -22,3 +22,11 @@ class ExpenseResponse(BaseModel):
 	note: str
 	merchant: str | None
 	spent_on: date
+
+
+class CategoryResponse(BaseModel):
+	model_config = ConfigDict(from_attributes=True)
+
+	categoryid: int
+	parent_categoryid: int | None
+	name: str

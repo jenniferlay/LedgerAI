@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.expenses.models import Category, Expense
 from app.expenses.schemas import ExpenseCreate
-from app.expenses.service import create_expense, list_expenses
+from app.expenses.service import create_expense, list_categories, list_expenses
 
 
 @pytest.fixture
@@ -66,6 +66,27 @@ async def test_create_expense_without_category_skips_category_owner_lookup(
 	db.add.assert_called_once_with(result)
 	db.commit.assert_awaited_once_with()
 	db.refresh.assert_awaited_once_with(result)
+
+
+@pytest.mark.asyncio
+async def test_list_categories_includes_only_global_and_user_categories(
+	db: MagicMock,
+) -> None:
+	categories = [
+		Category(categoryid=1, userid=0, parent_categoryid=None, name="Food"),
+		Category(categoryid=2, userid=7, parent_categoryid=1, name="Coffee"),
+	]
+	scalars = MagicMock()
+	scalars.all.return_value = categories
+	db.scalars = AsyncMock(return_value=scalars)
+
+	result = await list_categories(db, user_id=7)
+
+	assert result == categories
+	statement = db.scalars.await_args.args[0]
+	compiled = statement.compile(dialect=postgresql.dialect())
+	assert "categories.userid IN" in str(compiled)
+	assert compiled.params["userid_1"] == [0, 7]
 
 
 @pytest.mark.asyncio

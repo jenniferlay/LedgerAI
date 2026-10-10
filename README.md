@@ -11,7 +11,7 @@
 
 ## Conversational agent
 
-The `conversational-agent` process reads expenses through the authenticated, read-only `GET /expenses` endpoint. From the `conversational-agent` directory, run `python main.py` for text chat or `python main.py --voice` for realtime voice. The agent prompts for a login access token without echoing it. The token stays in the agent's per-run dependencies and is sent only as the bearer token for expense lookups. The agent tool cannot create, update, or delete expenses and fetches at most the latest 100 matching records.
+The `conversational-agent` process reads expenses through the authenticated, read-only `GET /expenses` endpoint. On startup, it also loads the signed-in user's available category IDs from `GET /expenses/categories` and supplies the current local date, month, and month date range as agent context. From the `conversational-agent` directory, run `python main.py` for text chat or `python main.py --voice` for realtime voice. The agent prompts for a login access token without echoing it. The token stays in the agent's per-run dependencies and is sent only as the bearer token for expense lookups. The agent tool cannot create, update, or delete expenses and fetches at most the latest 100 matching records.
 
 Set `API_BASE_URL` in the agent's environment (or its local `.env`) to the backend URL if it is not `http://127.0.0.1:8000`.
 

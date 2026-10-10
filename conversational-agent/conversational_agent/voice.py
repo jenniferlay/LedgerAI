@@ -3,13 +3,13 @@ import asyncio
 import pyaudio
 from pydantic_ai.usage import UsageLimits
 
-from conversational_agent.agent import advisor_agent, get_agent_deps
+from conversational_agent.agent import advisor_agent, financial_context, get_agent_deps
 
 
 async def run_voice() -> None:
   pya = pyaudio.PyAudio()
   safety_limits = UsageLimits(request_limit=20, total_tokens_limit=8000)
-  deps = get_agent_deps()
+  deps = await get_agent_deps()
 
   realtime_advisor = advisor_agent.realtime(
     "google:gemini-3.8-live",
@@ -20,7 +20,7 @@ async def run_voice() -> None:
       "If the user asks your name or who you are, you MUST say 'I'm Marty, your financial advisor.' "
       "NEVER say 'I don't have a name' or 'I am a large language model.' "
       "Use `lookup_spending` to fetch actual expenses before discussing spending. Never invent data. "
-      "Keep answers brief."
+      f"Keep answers brief.\n{financial_context(deps.categories)}"
     ),
   )
 

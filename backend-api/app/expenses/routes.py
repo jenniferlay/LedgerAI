@@ -6,10 +6,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import CurrentUser
 from app.db.database import get_db
-from app.expenses.schemas import ExpenseCreate, ExpenseResponse
-from app.expenses.service import create_expense, list_expenses
+from app.expenses.schemas import CategoryResponse, ExpenseCreate, ExpenseResponse
+from app.expenses.service import create_expense, list_categories, list_expenses
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
+
+
+@router.get("/categories", response_model=list[CategoryResponse])
+async def get_expense_categories(
+	current_user: CurrentUser,
+	db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[CategoryResponse]:
+	categories = await list_categories(db, current_user.userid)
+	return [CategoryResponse.model_validate(category) for category in categories]
 
 
 @router.post("", response_model=ExpenseResponse, status_code=status.HTTP_201_CREATED)
