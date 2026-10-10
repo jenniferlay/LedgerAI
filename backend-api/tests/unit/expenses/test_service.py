@@ -1,12 +1,13 @@
+from datetime import date
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.expenses.models import Category
+from app.expenses.models import Category, Expense
 from app.expenses.schemas import ExpenseCreate
-from app.expenses.service import create_expense
+from app.expenses.service import create_expense, list_expenses
 
 
 @pytest.fixture
@@ -65,3 +66,60 @@ async def test_create_expense_without_category_skips_category_owner_lookup(
 	db.add.assert_called_once_with(result)
 	db.commit.assert_awaited_once_with()
 	db.refresh.assert_awaited_once_with(result)
+
+
+@pytest.mark.asyncio
+async def test_list_expenses_scopes_and_filters_results(db: MagicMock) -> None:
+	expense = Expense(
+		expenseid=1,
+		userid=7,
+		categoryid=42,
+		amount_dollars=12,
+		amount_cents=34,
+		note="Lunch",
+		merchant="Cafe",
+		spent_on=date(2026, 5, 3),
+	)
+	scalars = MagicMock()
+	scalars.all.return_value = [expense]
+	db.scalars = AsyncMock(return_value=scalars)
+
+	result = await list_expenses(
+		db,
+		user_id=7,
+		start_date=date(2026, 5, 1),
+		end_date=date(2026, 5, 31),
+		categoryid=42,
+		merchant="Cafe",
+		limit=25,
+		offset=10,
+	)
+
+	assert result == [expense]
+	db.scalars.assert_awaited_once()
+	statement = db.scalars.await_args.args[0]
+	compiled = statement.compile(dialect=postgresql.dialect())
+
+	assert "expenses.userid =" in str(compiled)
+	assert "expenses.spent_on >=" in str(compiled)
+	assert "expenses.spent_on <=" in str(compiled)
+	assert "expenses.categoryid =" in str(compiled)
+	assert "expenses.merchant ILIKE" in str(compiled)
+	assert "ORDER BY expenses.spent_on DESC, expenses.expenseid DESC" in str(compiled)
+	assert compiled.params["userid_1"] == 7
+	assert compiled.params["categoryid_1"] == 42
+	assert 25 in compiled.params.values()
+	assert 10 in compiled.params.values()
+
+
+@pytest.mark.asyncio
+async def test_list_expenses_escapes_merchant_search_wildcards(db: MagicMock) -> None:
+	scalars = MagicMock()
+	scalars.all.return_value = []
+	db.scalars = AsyncMock(return_value=scalars)
+
+	await list_expenses(db, user_id=7, merchant="50%_ off")
+
+	statement = db.scalars.await_args.args[0]
+	compiled = statement.compile(dialect=postgresql.dialect())
+	assert compiled.params["merchant_1"] == "%50\\%\\_ off%"
