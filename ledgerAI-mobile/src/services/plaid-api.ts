@@ -5,6 +5,10 @@ const LinkTokenResponseSchema = z.object({
   link_token: z.string().min(1),
 });
 
+const PublicTokenExchangeResponseSchema = z.object({
+  item_id: z.string().min(1),
+});
+
 const ErrorBodySchema = z.object({
   detail: z.union([z.string(), z.array(z.object({ msg: z.string() }))]),
 });
@@ -27,7 +31,7 @@ function getErrorMessage(body: unknown, status: number): string {
   return detail.map((item) => item.msg).join(' ') || fallback;
 }
 
-export async function createLinkToken(): Promise<z.infer<typeof LinkTokenResponseSchema>> {
+async function postPlaid(path: string, body?: object): Promise<unknown> {
   if (!API_BASE_URL) {
     throw new Error('Set EXPO_PUBLIC_API_URL to the backend API address before connecting a bank.');
   }
@@ -41,11 +45,13 @@ export async function createLinkToken(): Promise<z.infer<typeof LinkTokenRespons
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}/plaid/link-token`, {
+    response = await fetch(`${API_BASE_URL}${path}`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
+        ...(body ? { 'Content-Type': 'application/json' } : {}),
       },
+      ...(body ? { body: JSON.stringify(body) } : {}),
       signal: controller.signal,
     });
   } catch (error) {
@@ -75,9 +81,28 @@ export async function createLinkToken(): Promise<z.infer<typeof LinkTokenRespons
     throw new Error(getErrorMessage(json, response.status));
   }
 
+  return json;
+}
+
+export async function createLinkToken(): Promise<z.infer<typeof LinkTokenResponseSchema>> {
+  const json = await postPlaid('/plaid/link-token');
+
   const parsed = LinkTokenResponseSchema.safeParse(json);
   if (!parsed.success) {
     throw new Error('The server returned an invalid Link token response.');
+  }
+
+  return parsed.data;
+}
+
+export async function exchangePublicToken(
+  publicToken: string,
+): Promise<z.infer<typeof PublicTokenExchangeResponseSchema>> {
+  const json = await postPlaid('/plaid/exchange', { public_token: publicToken });
+
+  const parsed = PublicTokenExchangeResponseSchema.safeParse(json);
+  if (!parsed.success) {
+    throw new Error('The server returned an invalid Plaid exchange response.');
   }
 
   return parsed.data;

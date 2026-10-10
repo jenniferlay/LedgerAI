@@ -36,9 +36,9 @@ persist the backend-issued access token for authenticated app requests.
 ## Plaid Link sandbox
 
 The authenticated home screen's **Connect bank** button requests a fresh Link
-token from `POST /link-token` each time it is pressed, then opens Plaid Link.
-The current success handler only confirms success in the UI; it does not store
-or log the returned public token. Token exchange is not implemented yet.
+token from `POST /plaid/link-token` each time it is pressed, opens Plaid Link,
+and sends the returned public token to `POST /plaid/exchange`. The app never
+stores or logs the public token or the resulting access token.
 
 Install the native SDK dependency with:
 
@@ -63,7 +63,9 @@ build:
 
 Start the backend and configure `EXPO_PUBLIC_API_URL` as described above.
 Sign in, choose **Connect bank**, and use Plaid sandbox credentials
-`user_good` / `pass_good` in the Link UI.
+`user_good` / `pass_good` in the Link UI. If Plaid Link does not open, confirm
+you launched the native development build rather than Expo Go; the app will
+also show an error when the Plaid native module is unavailable.
 
 In the output, you'll find options to open the app in a
 

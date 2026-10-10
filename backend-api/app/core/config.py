@@ -14,6 +14,7 @@ class Settings(BaseSettings):
   cors_origins: str = "*"
   plaid_client_id: str | None = None
   plaid_secret: str | None = None
+  plaid_access_token_encryption_key: str | None = None
   plaid_env: Literal["sandbox"] = "sandbox"
 
 settings = Settings()
