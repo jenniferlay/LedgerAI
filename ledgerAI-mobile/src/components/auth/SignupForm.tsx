@@ -40,8 +40,8 @@ function getValidationError(
 export default function SignupForm({
   email,
   setEmail,
-  name,
-  setName,
+  username,
+  setUsername,
   password,
   setPassword,
   showPassword,
@@ -49,6 +49,7 @@ export default function SignupForm({
   focusedField,
   setFocusedField,
   error,
+  isSubmitting,
   onSubmit,
 }: AuthFormProps) {
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -97,28 +98,28 @@ export default function SignupForm({
       </View>
 
       <View style={styles.fieldGroup}>
-        <Text style={styles.label}>Name</Text>
+        <Text style={styles.label}>Username</Text>
         <View
           style={[
             styles.inputBox,
-            focusedField === 'name' && styles.inputBoxFocused,
+            focusedField === 'username' && styles.inputBoxFocused,
           ]}
         >
           <MaterialIcons
             name="person-outline"
             size={20}
-            color={focusedField === 'name' ? theme.colors.primary : theme.colors.outline}
+            color={focusedField === 'username' ? theme.colors.primary : theme.colors.outline}
           />
           <TextInput
             style={styles.input}
-            placeholder="John Doe"
+            placeholder="Choose a username"
             placeholderTextColor={theme.colors.outline}
             keyboardType="default"
-            autoCapitalize="words"
+            autoCapitalize="none"
             autoCorrect={false}
-            value={name}
-            onChangeText={setName}
-            onFocus={() => setFocusedField('name')}
+            value={username}
+            onChangeText={setUsername}
+            onFocus={() => setFocusedField('username')}
             onBlur={() => setFocusedField(null)}
           />
         </View>
@@ -202,10 +203,12 @@ export default function SignupForm({
         style={({ pressed }) => [
           styles.submitBtn,
           pressed && styles.submitBtnPressed,
+          isSubmitting && styles.submitBtnDisabled,
         ]}
         onPress={handleSubmit}
+        disabled={isSubmitting}
       >
-        <Text style={styles.submitText}>Sign Up</Text>
+        <Text style={styles.submitText}>{isSubmitting ? 'Creating account...' : 'Sign Up'}</Text>
         <MaterialIcons
           name="arrow-forward"
           size={20}
@@ -271,6 +274,9 @@ const styles = StyleSheet.create({
   submitBtnPressed: {
     backgroundColor: theme.colors.tertiary,
     transform: [{ scale: 0.98 }],
+  },
+  submitBtnDisabled: {
+    opacity: 0.65,
   },
   submitText: {
     ...theme.typography.labelLg,

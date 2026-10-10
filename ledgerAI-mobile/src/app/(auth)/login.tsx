@@ -14,36 +14,63 @@ import theme from '../../constants/theme';
 import { useAuth } from '../../context/auth';
 import LoginForm, { type AuthFormProps } from '../../components/auth/LoginForm';
 import SignupForm from '../../components/auth/SignupForm';
+import { logIn, signUp } from '../../services/auth-api';
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [focusedField, setFocusedField] = useState<'email' | 'name' | 'password' | 'confirmPassword' | null>(null);
+  const [focusedField, setFocusedField] = useState<'email' | 'username' | 'password' | 'confirmPassword' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
-    if (!email.trim() || !password.trim()) {
+    if (!email.trim() || !password) {
       setError('Please enter both email and password.');
       return;
     }
 
+    if (!isLogin && !username.trim()) {
+      setError('Please enter your username.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+    setSuccessMessage(null);
     try {
-      // Authenticate session and store token
-      await signIn('dev-access-token');
+      if (!isLogin) {
+        try {
+          await signUp(email.trim(), username.trim(), password);
+          setSuccessMessage('Account created successfully. Please sign in from the Login tab.');
+          setPassword('');
+          setIsLogin(true);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Please try again.';
+          setError(`Could not create your account: ${message}`);
+        }
+        return;
+      }
+
+      const result = await logIn(email.trim(), password);
+      await signIn(result.access_token);
     } catch (err) {
-      setError('Failed to sign in. Please try again.');
+      const message = err instanceof Error ? err.message : 'Please try again.';
+      setError(`Could not sign in: ${message}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const formProps: AuthFormProps = {
     email,
     setEmail,
-    name,
-    setName,
+    username,
+    setUsername,
     password,
     setPassword,
     showPassword,
@@ -51,6 +78,7 @@ export default function LoginScreen() {
     focusedField,
     setFocusedField,
     error,
+    isSubmitting,
     onSubmit: handleSubmit,
   };
 
@@ -89,8 +117,12 @@ export default function LoginScreen() {
                   style={[styles.tab, active && styles.tabActive]}
                   onPress={() => {
                     setIsLogin(label === 'Login');
+                    setPassword('');
+                    setShowPassword(false);
                     setError(null);
+                    setSuccessMessage(null);
                   }}
+                  disabled={isSubmitting}
                 >
                   <Text style={[styles.tabText, active && styles.tabTextActive]}>
                     {label}
@@ -99,6 +131,13 @@ export default function LoginScreen() {
               );
             })}
           </View>
+
+          {successMessage && (
+            <View style={styles.successBox} accessibilityRole="alert">
+              <MaterialIcons name="check-circle-outline" size={18} color={theme.colors.primary} />
+              <Text style={styles.successText}>{successMessage}</Text>
+            </View>
+          )}
 
           {isLogin ? (
             <LoginForm {...formProps} />
@@ -180,5 +219,20 @@ const styles = StyleSheet.create({
   tabTextActive: {
     color: theme.colors.onPrimary,
     fontWeight: '600',
+  },
+  successBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: theme.borderRadius.xl,
+    backgroundColor: theme.colors.surfaceContainer,
+    marginBottom: theme.spacing.md,
+  },
+  successText: {
+    flex: 1,
+    ...theme.typography.bodySm,
+    color: theme.colors.primary,
   },
 });

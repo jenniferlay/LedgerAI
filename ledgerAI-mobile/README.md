@@ -16,6 +16,23 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
+## Backend authentication
+
+Copy `.env.example` to `.env` and set `EXPO_PUBLIC_API_URL` to the backend base URL.
+Use `http://localhost:8000` for web or an iOS simulator, `http://10.0.2.2:8000`
+for an Android emulator, or the computer's reachable LAN address for a physical
+device. Restart Expo after changing the value.
+
+For Expo Go on a physical phone, use the computer's LAN IP (for example,
+`http://192.168.1.25:8000`) and start the backend with
+`python main.py` from the `backend-api` directory. Keep the phone and computer
+on a network that allows them to reach each other; CORS settings do not make a
+server reachable over the network.
+
+The backend must be running with its database configured and the users table
+created. Signup creates the account and then signs in; both signup and login
+persist the backend-issued access token for authenticated app requests.
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)

@@ -12,10 +12,10 @@ python -m venv .venv
 pip install -r requirements.txt
 Copy-Item .env.example .env
 # Set DATABASE_URL in .env to your PostgreSQL connection string.
-fastapi dev main.py
+python main.py
 ```
 
-Run the command from the `backend-api` directory. The app reads its configuration from `.env`.
+Run the command from the `backend-api` directory. The app reads its configuration from `.env`. The development entry point binds to `0.0.0.0` on port `8000`, allowing a phone on the same reachable network to connect; use this setup only for development.
 
 Then open:
 
@@ -77,7 +77,9 @@ backend-api/
 
 ## Authentication
 
+- `POST /auth/signup` accepts JSON with an `email`, `username`, and `password`. Passwords must be at least 8 characters and contain uppercase and lowercase letters and a number.
 - `POST /auth/login` accepts JSON with an `email` and `password`, checks the user against the existing `users` table, and returns a 30-minute HS256 bearer token.
+- For development, CORS allows all origins by default so Expo Go on a phone can reach the API. Set `CORS_ORIGINS` to a comma-separated list of trusted origins to restrict browser access when deploying. Credentials remain disabled.
 - `POST /expenses` accepts JSON expense details and requires a bearer token. The expense owner is taken from the verified token; clients must not provide a user ID. If `categoryid` is omitted, it defaults to `1` (the system-wide General category). The API only accepts global or caller-owned categories, and the composite foreign key enforces the same ownership rule for direct SQL writes.
 - Passwords in `users.password_hash` must use the Argon2 format supported by `pwdlib`.
 - Set `JWT_SECRET_KEY` to a long, random secret in `.env`; never use an example placeholder in a deployed environment.
@@ -85,5 +87,5 @@ backend-api/
 
 ## Notes
 
-- The API exposes a health-check endpoint at `/` and an authentication endpoint at `/auth/login`.
+- The API exposes a health-check endpoint at `/` and authentication endpoints at `/auth/signup` and `/auth/login`.
 - The app is configured to run with FastAPI and reload during development.

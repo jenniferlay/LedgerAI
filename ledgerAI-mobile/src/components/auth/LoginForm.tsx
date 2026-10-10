@@ -12,15 +12,16 @@ import theme from '../../constants/theme';
 export interface AuthFormProps {
   email: string;
   setEmail: (value: string) => void;
-  name: string;
-  setName: (value: string) => void;
+  username: string;
+  setUsername: (value: string) => void;
   password: string;
   setPassword: (value: string) => void;
   showPassword: boolean;
   setShowPassword: (value: boolean) => void;
-  focusedField: 'email' | 'name' | 'password' | 'confirmPassword' | null;
-  setFocusedField: (value: 'email' | 'name' | 'password' | 'confirmPassword' | null) => void;
+  focusedField: 'email' | 'username' | 'password' | 'confirmPassword' | null;
+  setFocusedField: (value: 'email' | 'username' | 'password' | 'confirmPassword' | null) => void;
   error: string | null;
+  isSubmitting: boolean;
   onSubmit: () => void;
 }
 
@@ -34,6 +35,7 @@ export default function LoginForm({
   focusedField,
   setFocusedField,
   error,
+  isSubmitting,
   onSubmit,
 }: AuthFormProps) {
   return (
@@ -116,10 +118,12 @@ export default function LoginForm({
         style={({ pressed }) => [
           styles.submitBtn,
           pressed && styles.submitBtnPressed,
+          isSubmitting && styles.submitBtnDisabled,
         ]}
         onPress={onSubmit}
+        disabled={isSubmitting}
       >
-        <Text style={styles.submitText}>Sign In</Text>
+        <Text style={styles.submitText}>{isSubmitting ? 'Signing in...' : 'Sign In'}</Text>
         <MaterialIcons
           name="arrow-forward"
           size={20}
@@ -194,6 +198,9 @@ const styles = StyleSheet.create({
   submitBtnPressed: {
     backgroundColor: theme.colors.tertiary,
     transform: [{ scale: 0.98 }],
+  },
+  submitBtnDisabled: {
+    opacity: 0.65,
   },
   submitText: {
     ...theme.typography.labelLg,

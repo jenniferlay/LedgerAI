@@ -1,10 +1,13 @@
 import logging
 
+import uvicorn
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.auth.routes import router as auth_router
+from app.core.config import settings
 from app.expenses.routes import router as expenses_router
 
 logger = logging.getLogger(__name__)
@@ -12,6 +15,13 @@ logger = logging.getLogger(__name__)
 app = FastAPI(
   title="My FastAPI Service",
   version="1.0.0"
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(auth_router)
@@ -39,3 +49,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
 @app.get("/")
 async def ping():
   return {"status": "ok", "message": "pinged"}
+
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
