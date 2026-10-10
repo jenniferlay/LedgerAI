@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import theme from '../../../constants/theme';
+import theme from '@/constants/theme';
 import {
   DEFAULT_EXPENSE_CATEGORIES,
   type ExpenseCategoryOption,

@@ -2,7 +2,7 @@ import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import type { ComponentProps } from 'react';
-import { borderRadius, colors, spacing, typography } from '../../constants/theme';
+import { borderRadius, colors, spacing, typography } from '@/constants/theme';
 import PressableScale from './PressableScale';
 
 type IconName = ComponentProps<typeof MaterialIcons>['name'];

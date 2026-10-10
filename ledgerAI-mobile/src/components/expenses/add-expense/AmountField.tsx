@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
-import theme from '../../../constants/theme';
+import theme from '@/constants/theme';
 
 const { colors, spacing, borderRadius, typography } = theme;
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Alert } from 'react-native';
-import AddFormLayout from '../../shared/AddFormLayout';
-import PrimaryActionButton from '../../shared/PrimaryActionButton';
+import AddFormLayout from '@/components/shared/AddFormLayout';
+import PrimaryActionButton from '@/components/shared/PrimaryActionButton';
 import { CategoryNameField, IconPreview, ParentCategoryRow } from './CategoryFields';
 import IconGrid from './IconGrid';
 import { PARENT_CATEGORIES, type IconName } from './data';

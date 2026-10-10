@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing } from '../../constants/theme';
+import { colors, spacing } from '@/constants/theme';
 import FormHeader, { FORM_HEADER_HEIGHT } from './FormHeader';
 
 interface Props {

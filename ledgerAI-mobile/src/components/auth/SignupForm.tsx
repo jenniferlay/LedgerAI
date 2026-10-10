@@ -7,7 +7,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import theme from '../../constants/theme';
+import theme from '@/constants/theme';
 import type { AuthFormProps } from './LoginForm';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

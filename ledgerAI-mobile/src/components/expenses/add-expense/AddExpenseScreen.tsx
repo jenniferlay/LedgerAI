@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Alert } from 'react-native';
-import { spacing } from '../../../constants/theme';
-import AddFormLayout from '../../shared/AddFormLayout';
-import PrimaryActionButton from '../../shared/PrimaryActionButton';
+import { spacing } from '@/constants/theme';
+import AddFormLayout from '@/components/shared/AddFormLayout';
+import PrimaryActionButton from '@/components/shared/PrimaryActionButton';
 import AmountField from './AmountField';
 import MerchantField from './MerchantField';
 import NoteField from './NoteField';

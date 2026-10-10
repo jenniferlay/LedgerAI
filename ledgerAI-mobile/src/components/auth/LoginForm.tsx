@@ -7,7 +7,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import theme from '../../constants/theme';
+import theme from '@/constants/theme';
 
 export interface AuthFormProps {
   email: string;

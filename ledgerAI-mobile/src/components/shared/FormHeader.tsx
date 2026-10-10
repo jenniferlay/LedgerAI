@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { borderRadius, colors, spacing, typography } from '../../constants/theme';
+import { borderRadius, colors, spacing, typography } from '@/constants/theme';
 import PressableScale from './PressableScale';
 
 export const FORM_HEADER_HEIGHT = 56;

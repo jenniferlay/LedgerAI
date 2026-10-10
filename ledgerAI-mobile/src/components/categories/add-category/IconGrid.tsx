@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import theme from '../../../constants/theme';
-import PressableScale from '../../shared/PressableScale';
+import theme from '@/constants/theme';
+import PressableScale from '@/components/shared/PressableScale';
 import SectionHeader, { sectionHeaderStyles } from './SectionHeader';
 import { CATEGORY_ICONS, type IconName } from './data';
 

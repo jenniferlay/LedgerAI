@@ -1,10 +1,10 @@
 import React from 'react';
 import { Button, ScrollView, StyleSheet, View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
-import theme from '../../constants/theme';
-import { useAuth } from '../../context/auth';
-import { ThemedText } from '../../components/themed-text';
-import RecentActivity from '../../components/RecentActivity';
+import theme from '@/constants/theme';
+import { useAuth } from '@/context/auth';
+import { ThemedText } from '@/components/themed-text';
+import RecentActivity from '@/components/RecentActivity';
 
 export default function AppHomeScreen() {
   const router = useRouter();

@@ -12,11 +12,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
 import appIcon from '@/assets/images/icon.png';
-import theme from '../../constants/theme';
-import { useAuth } from '../../context/auth';
-import LoginForm, { type AuthFormProps } from '../../components/auth/LoginForm';
-import SignupForm from '../../components/auth/SignupForm';
-import { logIn, signUp } from '../../services/auth-api';
+import theme from '@/constants/theme';
+import { useAuth } from '@/context/auth';
+import LoginForm, { type AuthFormProps } from '@/components/auth/LoginForm';
+import SignupForm from '@/components/auth/SignupForm';
+import { logIn, signUp } from '@/services/auth-api';
 
 export default function LoginScreen() {
   const { signIn } = useAuth();

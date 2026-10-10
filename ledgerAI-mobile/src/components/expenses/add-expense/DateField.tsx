@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import theme from '../../../constants/theme';
+import theme from '@/constants/theme';
 import { getTodayIsoDate, getYesterdayIsoDate } from './validation';
 
 const { colors, spacing, borderRadius, typography } = theme;
