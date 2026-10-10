@@ -30,6 +30,8 @@ async function getStoredToken(): Promise<string | null> {
   return SecureStore.getItemAsync('jwt');
 }
 
+export const getAccessToken = getStoredToken;
+
 async function setStoredToken(token: string): Promise<void> {
   if (Platform.OS === 'web') {
     try {

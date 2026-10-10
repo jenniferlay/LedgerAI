@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Alert } from 'react-native';
 import { spacing } from '@/constants/theme';
+import { createExpense } from '@/services/expenses-api';
 import AddFormLayout from '@/components/shared/AddFormLayout';
 import PrimaryActionButton from '@/components/shared/PrimaryActionButton';
 import AmountField from './AmountField';
@@ -75,6 +76,7 @@ export default function AddExpenseScreen({ onCancel, onDone }: Props) {
 
     setIsSubmitting(true);
     try {
+      await createExpense(result.payload);
       if (onDone) {
         onDone(result.payload);
       } else {
@@ -82,11 +84,16 @@ export default function AddExpenseScreen({ onCancel, onDone }: Props) {
           result.payload.amount_cents,
         ).padStart(2, '0')}`;
         Alert.alert(
-          'Expense Validated',
-          `Successfully validated expense of ${formattedAmount} for "${result.payload.note}". Ready to send to API.`,
+          'Expense Saved',
+          `Successfully saved expense of ${formattedAmount} for "${result.payload.note}".`,
           [{ text: 'OK', onPress: onCancel }],
         );
       }
+    } catch (error) {
+      Alert.alert(
+        'Unable to Save Expense',
+        error instanceof Error ? error.message : 'An unexpected error occurred.',
+      );
     } finally {
       setIsSubmitting(false);
     }

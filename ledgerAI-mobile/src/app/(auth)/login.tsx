@@ -7,9 +7,9 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { MaterialIcons } from '@expo/vector-icons';
 import appIcon from '@/assets/images/icon.png';
 import theme from '@/constants/theme';
@@ -100,7 +100,8 @@ export default function LoginScreen() {
               <Image
                 source={appIcon}
                 style={styles.logoImage}
-                resizeMode="contain"
+                contentFit="contain"
+                cachePolicy="disk"
               />
             </View>
             <View style={styles.titleRow}>
