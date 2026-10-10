@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getAccessToken } from '@/context/auth';
+import { getAccessToken, invalidateSession } from '@/context/auth';
 import type { ExpensePayload } from '@/components/expenses/add-expense/types';
 
 const ExpenseResponseSchema = z.object({
@@ -68,6 +68,11 @@ export async function createExpense(
     );
   } finally {
     clearTimeout(timeoutId);
+  }
+
+  if (response.status === 401) {
+    await invalidateSession();
+    throw new Error('Your session has expired. Please sign in again.');
   }
 
   let json: unknown;

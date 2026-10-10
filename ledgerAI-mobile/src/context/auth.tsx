@@ -18,6 +18,7 @@ type AuthState = {
 };
 
 const AuthContext = createContext<AuthState | null>(null);
+const authInvalidationListeners = new Set<() => void>();
 
 async function getStoredToken(): Promise<string | null> {
   if (Platform.OS === 'web') {
@@ -60,16 +61,29 @@ async function deleteStoredToken(): Promise<void> {
   await SecureStore.deleteItemAsync('jwt');
 }
 
+export async function invalidateSession(): Promise<void> {
+  await deleteStoredToken();
+  authInvalidationListeners.forEach((listener) => listener());
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [authError, setAuthError] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
+    let isInvalidated = false;
+    const onSessionInvalidated = () => {
+      isInvalidated = true;
+      if (isMounted) {
+        setIsLoggedIn(false);
+      }
+    };
 
+    authInvalidationListeners.add(onSessionInvalidated);
     getStoredToken()
       .then((token) => {
-        if (isMounted) {
+        if (isMounted && !isInvalidated) {
           setIsLoggedIn(Boolean(token));
         }
       })
@@ -82,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       isMounted = false;
+      authInvalidationListeners.delete(onSessionInvalidated);
     };
   }, []);
 
