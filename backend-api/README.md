@@ -78,7 +78,7 @@ backend-api/
 ## Authentication
 
 - `POST /auth/signup` accepts JSON with an `email`, `username`, and `password`. Passwords must be at least 8 characters and contain uppercase and lowercase letters and a number.
-- `POST /auth/login` accepts JSON with an `email` and `password`, checks the user against the existing `users` table, and returns a 30-minute HS256 bearer token.
+- `POST /auth/login` accepts JSON with an `email` and `password`, checks the user against the existing `users` table, and returns a 7-day HS256 bearer token.
 - For development, CORS allows all origins by default so Expo Go on a phone can reach the API. Set `CORS_ORIGINS` to a comma-separated list of trusted origins to restrict browser access when deploying. Credentials remain disabled.
 - `POST /expenses` accepts JSON expense details and requires a bearer token. The expense owner is taken from the verified token; clients must not provide a user ID. If `categoryid` is omitted, it defaults to `1` (the system-wide General category). The API only accepts global or caller-owned categories, and the composite foreign key enforces the same ownership rule for direct SQL writes.
 - `GET /expenses` requires a bearer token and returns only the caller's expenses, newest first. Optional `start_date` and `end_date` filters are inclusive; `categoryid` filters by category; `merchant` performs a case-insensitive substring search. Results are paginated with `limit` (default `100`, maximum `500`) and `offset` (default `0`).
