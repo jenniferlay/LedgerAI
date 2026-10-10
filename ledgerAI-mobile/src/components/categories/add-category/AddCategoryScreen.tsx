@@ -49,11 +49,7 @@ export default function AddCategoryScreen({ onCancel, onDone }: Props) {
   return (
     <AddFormLayout
       title="Add Category"
-      actionLabel="Done"
-      actionAccessibilityLabel="Save Category"
-      actionScale={0.95}
       onCancel={onCancel}
-      onDone={handleDone}
     >
       <IconPreview icon={icon} />
       <CategoryNameField value={name} onChangeText={setName} />

@@ -2,28 +2,16 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { borderRadius, colors, spacing, typography } from '@/constants/theme';
-import PressableScale from './PressableScale';
+import { colors, spacing, typography } from '@/constants/theme';
 
 export const FORM_HEADER_HEIGHT = 56;
 
 interface Props {
   title: string;
-  actionLabel: string;
-  actionAccessibilityLabel: string;
-  actionScale: number;
   onCancel?: () => void;
-  onDone?: () => void;
 }
 
-export default function FormHeader({
-  title,
-  actionLabel,
-  actionAccessibilityLabel,
-  actionScale,
-  onCancel,
-  onDone,
-}: Props) {
+export default function FormHeader({ title, onCancel }: Props) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -45,16 +33,6 @@ export default function FormHeader({
         </Pressable>
 
         <Text style={styles.title}>{title}</Text>
-
-        <PressableScale
-          accessibilityLabel={actionAccessibilityLabel}
-          accessibilityRole="button"
-          onPress={onDone}
-          scale={actionScale}
-          style={styles.done}
-        >
-          <Text style={styles.doneText}>{actionLabel}</Text>
-        </PressableScale>
       </View>
     </View>
   );
@@ -94,26 +72,10 @@ const styles = StyleSheet.create({
     color: colors.onSurfaceVariant,
   },
   title: {
+    flex: 1,
     ...typography.headlineSm,
     color: colors.onSurface,
     letterSpacing: -0.45,
-  },
-  done: {
-    height: 36,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 6,
-  },
-  doneText: {
-    ...typography.labelLg,
-    color: colors.onPrimary,
-    fontWeight: '600',
+    textAlign: 'center',
   },
 });

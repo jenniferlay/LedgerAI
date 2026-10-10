@@ -13,23 +13,15 @@ import FormHeader, { FORM_HEADER_HEIGHT } from './FormHeader';
 
 interface Props {
   title: string;
-  actionLabel: string;
-  actionAccessibilityLabel: string;
-  actionScale?: number;
   contentTopSpacing?: number;
   onCancel?: () => void;
-  onDone?: () => void;
   children: React.ReactNode;
 }
 
 export default function AddFormLayout({
   title,
-  actionLabel,
-  actionAccessibilityLabel,
-  actionScale = 0.96,
   contentTopSpacing = 0,
   onCancel,
-  onDone,
   children,
 }: Props) {
   const insets = useSafeAreaInsets();
@@ -37,14 +29,7 @@ export default function AddFormLayout({
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
-      <FormHeader
-        title={title}
-        actionLabel={actionLabel}
-        actionAccessibilityLabel={actionAccessibilityLabel}
-        actionScale={actionScale}
-        onCancel={onCancel}
-        onDone={onDone}
-      />
+      <FormHeader title={title} onCancel={onCancel} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

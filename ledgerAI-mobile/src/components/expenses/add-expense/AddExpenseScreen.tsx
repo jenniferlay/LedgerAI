@@ -102,10 +102,7 @@ export default function AddExpenseScreen({ onCancel, onDone }: Props) {
   return (
     <AddFormLayout
       title="Log Expense"
-      actionLabel="Save"
-      actionAccessibilityLabel="Save Expense"
       onCancel={onCancel}
-      onDone={handleSave}
       contentTopSpacing={spacing.sm}
     >
       <AmountField
