@@ -7,9 +7,11 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
+import appIcon from '@/assets/images/icon.png';
 import theme from '../../constants/theme';
 import { useAuth } from '../../context/auth';
 import LoginForm, { type AuthFormProps } from '../../components/auth/LoginForm';
@@ -95,10 +97,10 @@ export default function LoginScreen() {
         >
           <View style={styles.header}>
             <View style={styles.logoBox}>
-              <MaterialIcons
-                name="account-balance-wallet"
-                size={32}
-                color={theme.colors.primary}
+              <Image
+                source={appIcon}
+                style={styles.logoImage}
+                resizeMode="contain"
               />
             </View>
             <View style={styles.titleRow}>
@@ -170,13 +172,26 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg,
   },
   logoBox: {
-    width: 72,
-    height: 72,
-    borderRadius: theme.borderRadius.xl,
-    backgroundColor: theme.colors.surfaceContainer,
+    width: 88,
+    height: 88,
+    borderRadius: 28,
+    backgroundColor: '#1a2230',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: theme.spacing.sm,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: 'rgba(145, 255, 227, 0.5)',
+    shadowColor: '#5de4c7',
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 8,
+  },
+  logoImage: {
+    width: 76,
+    height: 76,
+    borderRadius: 22,
   },
   titleRow: {
     flexDirection: 'row',
