@@ -9,6 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.auth.routes import router as auth_router
 from app.core.config import settings
 from app.expenses.routes import router as expenses_router
+from app.plaid.routes import router as plaid_router
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(expenses_router)
+app.include_router(plaid_router)
 
 
 @app.exception_handler(SQLAlchemyError)

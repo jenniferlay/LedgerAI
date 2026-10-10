@@ -1,7 +1,10 @@
 import os
 from unittest.mock import AsyncMock, MagicMock
 
-os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+os.environ.setdefault(
+    "DATABASE_URL",
+    "postgresql+asyncpg://test:test@localhost/test",
+)
 os.environ.setdefault("JWT_SECRET_KEY", "1234567890abcdef1234567890abcdef")
 
 import pytest

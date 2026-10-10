@@ -83,6 +83,8 @@ backend-api/
 - `POST /expenses` accepts JSON expense details and requires a bearer token. The expense owner is taken from the verified token; clients must not provide a user ID. If `categoryid` is omitted, it defaults to `1` (the system-wide General category). The API only accepts global or caller-owned categories, and the composite foreign key enforces the same ownership rule for direct SQL writes.
 - `GET /expenses` requires a bearer token and returns only the caller's expenses, newest first. Optional `start_date` and `end_date` filters are inclusive; `categoryid` filters by category; `merchant` performs a case-insensitive substring search. Results are paginated with `limit` (default `100`, maximum `500`) and `offset` (default `0`).
 - `GET /expenses/categories` requires a bearer token and returns global and caller-owned categories with IDs and parent IDs.
+- `POST /link-token` requires a bearer token and creates a Plaid Link token for the authenticated user. Configure `PLAID_CLIENT_ID`, `PLAID_SECRET`, and `PLAID_ENV=sandbox` in `.env`; no Plaid credentials are required until this endpoint is used.
+- Plaid is configured for sandbox only. The server uses the official `plaid-python` SDK and does not log credentials or Plaid responses.
 - Passwords in `users.password_hash` must use the Argon2 format supported by `pwdlib`.
 - Set `JWT_SECRET_KEY` to a long, random secret in `.env`; never use an example placeholder in a deployed environment.
 - Run `sql/users.sql` against PostgreSQL before using the login route.
