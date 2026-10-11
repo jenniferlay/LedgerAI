@@ -9,7 +9,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.auth.routes import router as auth_router
 from app.core.config import settings
 from app.expenses.routes import router as expenses_router
-from app.plaid.routes import router as plaid_router
+from app.plaid.errors import register_plaid_error_handlers
+from app.plaid.router import router as plaid_router
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,7 @@ app = FastAPI(
   title="My FastAPI Service",
   version="1.0.0"
 )
+register_plaid_error_handlers(app)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()],
