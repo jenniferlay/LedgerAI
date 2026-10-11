@@ -6,6 +6,7 @@ import { useAuth } from '@/context/auth';
 import PrimaryActionButton from '@/components/shared/PrimaryActionButton';
 import type { LinkExit } from 'react-native-plaid-link-sdk';
 import { createLinkToken, exchangePublicToken } from '@/services/plaid-api';
+import RecentActivity from '@/components/RecentActivity';
 
 export default function AppHomeScreen() {
   const router = useRouter();
@@ -97,6 +98,7 @@ export default function AppHomeScreen() {
         title="Simulate Logout"
         onPress={() => void handleSignOut()}
       />
+      <RecentActivity />
     </View>
   );
 }
