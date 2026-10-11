@@ -9,7 +9,10 @@ import { getExpenses, subscribeToExpenseUpdates } from '@/services/expenses-api'
 import type { ExpenseFeedItem } from '@/services/expenses-api';
 
 const SKELETON_ROWS = 4;
-const currencyFormatters = new Map<string, Intl.NumberFormat>();
+const amountFormatter = new Intl.NumberFormat(undefined, {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 const { colors, spacing, borderRadius } = theme;
 
 export interface ActivityItem {
@@ -37,27 +40,19 @@ function formatActivityDate(value: string): string {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function formatActivityAmount(amount: number, currency: string): string {
-  let formatter = currencyFormatters.get(currency);
-  if (!formatter) {
-    formatter = new Intl.NumberFormat(undefined, { style: 'currency', currency });
-    currencyFormatters.set(currency, formatter);
-  }
-  return formatter.format(amount);
+function formatActivityAmount(amount: number): string {
+  return amountFormatter.format(amount);
 }
 
 function toActivityItem(item: ExpenseFeedItem): ActivityItem {
   const isIncome = item.source === 'plaid' && item.amount < 0;
-  const currency = item.source === 'plaid' && item.currency && /^[A-Z]{3}$/.test(item.currency)
-    ? item.currency
-    : 'USD';
 
   return {
     id: `${item.source}-${item.id}`,
     merchant: item.merchant || item.description,
     category: item.source === 'manual' ? 'Manual expense' : 'Bank transaction',
     date: formatActivityDate(item.spent_on),
-    amount: formatActivityAmount(Math.abs(item.amount) * (isIncome ? 1 : -1), currency),
+    amount: formatActivityAmount(Math.abs(item.amount) * (isIncome ? 1 : -1)),
     kind: isIncome ? 'income' : 'expense',
     note: item.merchant ? item.description : undefined,
   };
@@ -127,7 +122,6 @@ function ActivityCard({ item }: { item: ActivityItem }) {
       </View>
       {item.note && (
         <ThemedView type="surfaceContainerLow" style={styles.note}>
-          <MaterialIcons name="auto-awesome" size={14} color={colors.primary} />
           <ThemedText type="small" themeColor="onSurfaceVariant" numberOfLines={2} style={styles.noteText}>
             {item.note}
           </ThemedText>

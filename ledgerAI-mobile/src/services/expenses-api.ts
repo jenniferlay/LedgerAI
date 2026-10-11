@@ -148,7 +148,7 @@ async function request<T>(
   return parsed.data;
 }
 
-export async function getExpenses(limit = 4): Promise<ExpenseFeedItem[]> {
+export async function getExpenses(limit = 15): Promise<ExpenseFeedItem[]> {
   const token = await requireAuth('loading expenses');
   const cacheKey = JSON.stringify([token, limit]);
   const cached = expenseCache.get(cacheKey);

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Platform, StyleSheet, Text, View } from 'react-native';
+import { Button, Platform, ScrollView, StyleSheet, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import theme from '@/constants/theme';
 import { useAuth } from '@/context/auth';
@@ -73,7 +73,7 @@ export default function AppHomeScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Authenticated Home</Text>
       {Platform.OS !== 'web' && (
         <PrimaryActionButton
@@ -99,7 +99,7 @@ export default function AppHomeScreen() {
         onPress={() => void handleSignOut()}
       />
       <RecentActivity />
-    </View>
+    </ScrollView>
   );
 }
 
