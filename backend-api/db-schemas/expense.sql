@@ -17,3 +17,6 @@ CREATE TABLE IF NOT EXISTS expenses (
     REFERENCES categories (categoryid, userid)
     ON DELETE SET NULL (categoryid, category_userid)
 );
+
+CREATE INDEX IF NOT EXISTS ix_expenses_user_spent
+  ON expenses (userid, spent_on DESC, expenseid DESC);

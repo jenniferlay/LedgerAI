@@ -6,8 +6,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import CurrentUser
 from app.db.database import get_db
-from app.expenses.schemas import CategoryResponse, ExpenseCreate, ExpenseResponse
-from app.expenses.service import create_expense, list_categories, list_expenses
+from app.expenses.schemas import (
+	CategoryResponse,
+	ExpenseCreate,
+	ExpenseFeedItem,
+	ExpenseResponse,
+	ManualExpenseFeedItem,
+	PlaidExpenseFeedItem,
+)
+from app.expenses.service import create_expense, list_categories, list_expense_feed
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
 
@@ -31,7 +38,7 @@ async def post_expense(
 	return ExpenseResponse.model_validate(expense)
 
 
-@router.get("", response_model=list[ExpenseResponse])
+@router.get("", response_model=list[ExpenseFeedItem])
 async def get_expenses(
 	current_user: CurrentUser,
 	db: Annotated[AsyncSession, Depends(get_db)],
@@ -41,7 +48,7 @@ async def get_expenses(
 	merchant: Annotated[str | None, Query(min_length=1, max_length=255)] = None,
 	limit: Annotated[int, Query(ge=1, le=500)] = 100,
 	offset: Annotated[int, Query(ge=0)] = 0,
-) -> list[ExpenseResponse]:
+) -> list[ExpenseFeedItem]:
 	if start_date is not None and end_date is not None and start_date > end_date:
 		raise HTTPException(
 			status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -53,7 +60,7 @@ async def get_expenses(
 			detail="merchant must contain non-whitespace characters",
 		)
 
-	expenses = await list_expenses(
+	feed_items = await list_expense_feed(
 		db,
 		current_user.userid,
 		start_date=start_date,
@@ -63,4 +70,11 @@ async def get_expenses(
 		limit=limit,
 		offset=offset,
 	)
-	return [ExpenseResponse.model_validate(expense) for expense in expenses]
+	return [
+		(
+			ManualExpenseFeedItem.model_validate(item)
+			if item["source"] == "manual"
+			else PlaidExpenseFeedItem.model_validate(item)
+		)
+		for item in feed_items
+	]

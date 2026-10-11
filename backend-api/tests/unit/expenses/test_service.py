@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -7,7 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.expenses.models import Category, Expense
 from app.expenses.schemas import ExpenseCreate
-from app.expenses.service import create_expense, list_categories, list_expenses
+from app.expenses.service import (
+	create_expense,
+	list_categories,
+	list_expense_feed,
+	list_expenses,
+)
 
 
 @pytest.fixture
@@ -144,3 +150,81 @@ async def test_list_expenses_escapes_merchant_search_wildcards(db: MagicMock) ->
 	statement = db.scalars.await_args.args[0]
 	compiled = statement.compile(dialect=postgresql.dialect())
 	assert compiled.params["merchant_1"] == "%50\\%\\_ off%"
+
+
+@pytest.mark.asyncio
+async def test_list_expense_feed_combines_user_expenses_and_plaid_transactions(
+	db: MagicMock,
+) -> None:
+	rows = [
+		{
+			"source": "manual",
+			"id": 1,
+			"amount": Decimal("12.34"),
+			"spent_on": date(2026, 5, 3),
+			"merchant": "Cafe",
+			"description": "Lunch",
+			"categoryid": 42,
+		},
+		{
+			"source": "plaid",
+			"id": 9,
+			"amount": Decimal("25.00"),
+			"spent_on": date(2026, 5, 2),
+			"merchant": "Market",
+			"description": "CARD PURCHASE",
+			"transaction_id": "transaction-123",
+			"account_id": "account-456",
+			"pending": False,
+			"currency": "USD",
+		},
+	]
+	result = MagicMock()
+	result.mappings.return_value.all.return_value = rows
+	db.execute = AsyncMock(return_value=result)
+
+	feed = await list_expense_feed(
+		db,
+		user_id=7,
+		start_date=date(2026, 5, 1),
+		end_date=date(2026, 5, 31),
+		merchant="market",
+		limit=25,
+		offset=10,
+	)
+
+	assert feed == rows
+	statement = db.execute.await_args.args[0]
+	compiled = statement.compile(dialect=postgresql.dialect())
+	sql = str(compiled)
+	assert "UNION ALL" in sql
+	assert "expenses.userid =" in sql
+	assert "plaid_items.user_id =" in sql
+	assert "expenses.spent_on >=" in sql
+	assert "plaid_transactions.transaction_date >=" in sql
+	assert "ORDER BY expenses.spent_on DESC, expenses.expenseid DESC" in sql
+	assert (
+		"ORDER BY plaid_transactions.transaction_date DESC, "
+		"plaid_transactions.id DESC"
+	) in sql
+	assert "ORDER BY anon_1.spent_on DESC, anon_1.source ASC, anon_1.id DESC" in sql
+	assert list(compiled.params.values()).count(35) == 2
+	assert 25 in compiled.params.values()
+	assert 10 in compiled.params.values()
+
+
+@pytest.mark.asyncio
+async def test_list_expense_feed_category_filter_excludes_plaid_transactions(
+	db: MagicMock,
+) -> None:
+	result = MagicMock()
+	result.mappings.return_value.all.return_value = []
+	db.execute = AsyncMock(return_value=result)
+
+	await list_expense_feed(db, user_id=7, categoryid=42)
+
+	statement = db.execute.await_args.args[0]
+	compiled = statement.compile(dialect=postgresql.dialect())
+	assert "expenses.categoryid =" in str(compiled)
+	assert "plaid_transactions.plaid_item_id" in str(compiled)
+	assert "false" in str(compiled).lower()

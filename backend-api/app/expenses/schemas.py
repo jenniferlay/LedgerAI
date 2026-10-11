@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -22,6 +23,35 @@ class ExpenseResponse(BaseModel):
 	note: str
 	merchant: str | None
 	spent_on: date
+
+
+class ManualExpenseFeedItem(BaseModel):
+	source: Literal["manual"]
+	id: int
+	amount: float
+	spent_on: date
+	merchant: str | None
+	description: str
+	categoryid: int | None
+
+
+class PlaidExpenseFeedItem(BaseModel):
+	source: Literal["plaid"]
+	id: int
+	amount: float
+	spent_on: date
+	merchant: str | None
+	description: str
+	transaction_id: str
+	account_id: str
+	pending: bool
+	currency: str | None
+
+
+ExpenseFeedItem = Annotated[
+	ManualExpenseFeedItem | PlaidExpenseFeedItem,
+	Field(discriminator="source"),
+]
 
 
 class CategoryResponse(BaseModel):
