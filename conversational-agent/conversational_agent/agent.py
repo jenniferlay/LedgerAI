@@ -15,13 +15,21 @@ load_dotenv()
 
 
 class ExpenseRecord(BaseModel):
-  expenseid: int
-  categoryid: int | None
-  amount_dollars: int
-  amount_cents: int
-  note: str
-  merchant: str | None
+  source: str
+  id: int
+  amount: float
   spent_on: date
+  merchant: str | None = None
+  description: str
+  
+  # Manual-specific fields
+  categoryid: int | None = None
+  
+  # Plaid-specific fields
+  transaction_id: str | None = None
+  account_id: str | None = None
+  pending: bool | None = None
+  currency: str | None = None
 
 
 class CategoryRecord(BaseModel):
@@ -93,7 +101,7 @@ async def lookup_spending(
   categoryid: int | None = None,
   merchant: str | None = None,
 ) -> list[ExpenseRecord]:
-  """Read up to 100 of the signed-in user's expenses with optional date, category-ID, and merchant filters."""
+  """Read up to 40 of the signed-in user's expenses with optional date, category-ID, and merchant filters."""
   if start_date is not None and end_date is not None and start_date > end_date:
     raise ValueError("start_date must be on or before end_date")
 
@@ -104,7 +112,7 @@ async def lookup_spending(
       "end_date": end_date,
       "categoryid": categoryid,
       "merchant": merchant,
-      "limit": 100,
+      "limit": 40,
     }.items()
     if value is not None
   }
@@ -116,7 +124,8 @@ async def lookup_spending(
       params=params,
     )
     response.raise_for_status()
-    return TypeAdapter(list[ExpenseRecord]).validate_python(response.json())
+    ret = TypeAdapter(list[ExpenseRecord]).validate_python(response.json())
+    return ret
 
 
 async def get_agent_deps() -> AgentDeps:
