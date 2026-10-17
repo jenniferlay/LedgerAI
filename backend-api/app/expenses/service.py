@@ -6,6 +6,7 @@ from sqlalchemy import (
 	BigInteger,
 	Numeric,
 	String,
+	case,
 	cast,
 	func,
 	literal,
@@ -97,12 +98,20 @@ async def list_expense_feed(
 	manual_query = select(
 		literal("manual").label("source"),
 		Expense.expenseid.label("id"),
-		(
-			cast(
+		case(
+			(
+				Expense.amount_dollars < 0,
+				cast(
+					Expense.amount_dollars * 100 - Expense.amount_cents,
+					Numeric(14, 2),
+				)
+				/ 100,
+			),
+			else_=cast(
 				Expense.amount_dollars * 100 + Expense.amount_cents,
 				Numeric(14, 2),
 			)
-			/ 100
+			/ 100,
 		).label("amount"),
 		Expense.spent_on.label("spent_on"),
 		Expense.merchant.label("merchant"),
@@ -196,8 +205,10 @@ async def update_expense_item(
 
 		if data.amount is not None:
 			total_cents = round(data.amount * 100)
-			expense.amount_dollars = int(total_cents // 100)
-			expense.amount_cents = int(total_cents % 100)
+			sign = -1 if total_cents < 0 else 1
+			abs_cents = abs(total_cents)
+			expense.amount_dollars = (abs_cents // 100) * sign
+			expense.amount_cents = abs_cents % 100
 		if data.spent_on is not None:
 			expense.spent_on = data.spent_on
 		if data.merchant is not None:
@@ -218,7 +229,11 @@ async def update_expense_item(
 		return {
 			"source": "manual",
 			"id": expense.expenseid,
-			"amount": float(expense.amount_dollars) + float(expense.amount_cents) / 100.0,
+			"amount": (
+				float(expense.amount_dollars * 100 - expense.amount_cents) / 100.0
+				if expense.amount_dollars < 0
+				else float(expense.amount_dollars * 100 + expense.amount_cents) / 100.0
+			),
 			"spent_on": expense.spent_on,
 			"merchant": expense.merchant,
 			"description": expense.note,

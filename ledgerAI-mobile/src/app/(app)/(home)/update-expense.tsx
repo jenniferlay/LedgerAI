@@ -9,6 +9,7 @@ export default function EditExpenseRoute() {
     editSource?: string;
     editId?: string;
     amount?: string;
+    type?: 'expense' | 'income';
     merchant?: string;
     note?: string;
     spentOn?: string;
@@ -63,6 +64,7 @@ export default function EditExpenseRoute() {
         source: editSource,
         itemId: editId,
         amount: params.amount ?? '',
+        type: params.type,
         merchant: params.merchant ?? '',
         note: params.note ?? '',
         spentOn: params.spentOn,

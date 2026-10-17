@@ -8,6 +8,7 @@ import {
   AmountField,
   CategorySelectField,
   DateField,
+  ExpenseTypeToggle,
   MerchantField,
   NoteField,
 } from '../fields';
@@ -23,6 +24,7 @@ import type {
   ExpenseFormErrors,
   ExpenseFormValues,
   ExpensePayload,
+  TransactionType,
 } from '../types';
 
 interface Props {
@@ -33,6 +35,7 @@ interface Props {
     source: string;
     itemId: number;
     amount?: string;
+    type?: TransactionType;
     merchant?: string;
     note?: string;
     spentOn?: string;
@@ -48,8 +51,14 @@ export default function UpdateExpenseScreen({
   initialValues,
   isDeleting,
 }: Props) {
+  const rawAmount = initialValues.amount ?? '';
+  const initialType: TransactionType =
+    initialValues.type ?? (rawAmount.trim().startsWith('-') ? 'income' : 'expense');
+  const initialAmount = rawAmount.trim().replace('-', '');
+
   const [values, setValues] = useState<ExpenseFormValues>({
-    amount: initialValues.amount ?? '',
+    type: initialType,
+    amount: initialAmount,
     merchant: initialValues.merchant ?? '',
     note: initialValues.note ?? '',
     spentOn: initialValues.spentOn ?? getTodayIsoDate(),
@@ -119,14 +128,20 @@ export default function UpdateExpenseScreen({
 
   return (
     <AddFormLayout
-      title="Edit Expense"
+      title={values.type === 'income' ? 'Edit Income' : 'Edit Expense'}
       onCancel={onCancel}
       onDelete={onDelete}
       isDeleting={isDeleting}
       contentTopSpacing={spacing.sm}
     >
+      <ExpenseTypeToggle
+        value={values.type}
+        onChange={(type) => setFieldValue('type', type)}
+      />
+
       <AmountField
         value={values.amount}
+        type={values.type}
         error={errors.amount}
         onChangeText={(text) => setFieldValue('amount', text)}
         onBlur={() => handleBlurField('amount')}
@@ -159,8 +174,8 @@ export default function UpdateExpenseScreen({
       />
 
       <PrimaryActionButton
-        label="Update Expense"
-        accessibilityLabel="Update Expense"
+        label={values.type === 'income' ? 'Update Income' : 'Update Expense'}
+        accessibilityLabel={values.type === 'income' ? 'Update Income' : 'Update Expense'}
         icon="check"
         iconPosition="before"
         onPress={handleSave}

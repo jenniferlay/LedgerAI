@@ -38,6 +38,10 @@ def test_get_expenses_returns_manual_and_plaid_feed_items(
 					"merchant": "Cafe",
 					"description": "Lunch",
 					"categoryid": 42,
+					"transaction_id": None,
+					"account_id": None,
+					"pending": None,
+					"currency": None,
 				},
 				{
 					"source": "plaid",
@@ -68,10 +72,6 @@ def test_get_expenses_returns_manual_and_plaid_feed_items(
 			"merchant": "Cafe",
 			"description": "Lunch",
 			"categoryid": 42,
-			"transaction_id": None,
-			"account_id": None,
-			"pending": None,
-			"currency": None,
 		},
 		{
 			"source": "plaid",
@@ -81,10 +81,6 @@ def test_get_expenses_returns_manual_and_plaid_feed_items(
 			"merchant": "Market",
 			"description": "CARD PURCHASE",
 			"categoryid": None,
-			"transaction_id": "transaction-123",
-			"account_id": "account-456",
-			"pending": False,
-			"currency": "USD",
 		},
 	]
 
@@ -122,6 +118,46 @@ def test_update_expense_item_route(monkeypatch: pytest.MonkeyPatch) -> None:
 	data = response.json()
 	assert data["amount"] == 15.00
 	assert data["merchant"] == "Updated Cafe"
+
+
+def test_post_expense_route_income(monkeypatch: pytest.MonkeyPatch) -> None:
+	monkeypatch.setitem(
+		app.dependency_overrides,
+		get_current_user,
+		lambda: SimpleNamespace(userid=7),
+	)
+	monkeypatch.setitem(app.dependency_overrides, get_db, lambda: AsyncMock())
+	monkeypatch.setattr(
+		routes,
+		"create_expense",
+		AsyncMock(
+			return_value=SimpleNamespace(
+				expenseid=10,
+				categoryid=1,
+				amount_dollars=-50,
+				amount_cents=25,
+				note="Freelance Work",
+				merchant="Client",
+				spent_on=date(2026, 5, 3),
+			)
+		),
+	)
+
+	with TestClient(app) as client:
+		response = client.post(
+			"/expenses",
+			json={
+				"amount_dollars": -50,
+				"amount_cents": 25,
+				"note": "Freelance Work",
+				"merchant": "Client",
+			},
+		)
+
+	assert response.status_code == 201
+	data = response.json()
+	assert data["amount_dollars"] == -50
+	assert data["amount_cents"] == 25
 
 
 def test_delete_expense_item_route(monkeypatch: pytest.MonkeyPatch) -> None:

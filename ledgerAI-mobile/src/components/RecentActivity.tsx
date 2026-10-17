@@ -51,17 +51,17 @@ function formatActivityAmount(amount: number): string {
 }
 
 function toActivityItem(item: ExpenseFeedItem): ActivityItem {
-  const isIncome = item.source === 'plaid' && item.amount < 0;
+  const isIncome = item.amount < 0;
 
   return {
     id: `${item.source}-${item.id}`,
     source: item.source,
     rawId: item.id,
     merchant: item.merchant || item.description,
-    category: item.source === 'manual' ? 'Manual expense' : 'Bank transaction',
+    category: item.source === 'manual' ? (isIncome ? 'Manual income' : 'Manual expense') : 'Bank transaction',
     date: formatActivityDate(item.spent_on),
     rawDate: item.spent_on.slice(0, 10),
-    amount: formatActivityAmount(Math.abs(item.amount) * (isIncome ? 1 : -1)),
+    amount: `${isIncome ? '+' : '-'}$${formatActivityAmount(Math.abs(item.amount))}`,
     rawAmount: Math.abs(item.amount),
     kind: isIncome ? 'income' : 'expense',
     note: item.merchant ? item.description : undefined,
@@ -110,6 +110,7 @@ function ActivityCard({ item, router }: { item: ActivityItem; router: any }) {
             editSource: item.source,
             editId: String(item.rawId),
             amount: String(item.rawAmount),
+            type: item.kind,
             merchant: item.merchant,
             note: item.note ?? '',
             spentOn: item.rawDate,

@@ -3,13 +3,13 @@ CREATE TABLE IF NOT EXISTS expenses (
   userid BIGINT NOT NULL REFERENCES users(userid) ON DELETE CASCADE,
   categoryid BIGINT DEFAULT 1,
   category_userid BIGINT DEFAULT 0,  -- owner of the category: this user or 0 (global)
-  amount_dollars INTEGER NOT NULL CHECK (amount_dollars >= 0),
+  amount_dollars INTEGER NOT NULL,
   amount_cents SMALLINT NOT NULL CHECK (amount_cents BETWEEN 0 AND 99),
   note TEXT NOT NULL CHECK (length(btrim(note)) > 0),
   merchant VARCHAR(255),
   spent_on DATE NOT NULL DEFAULT CURRENT_DATE,
 
-  CHECK (amount_dollars > 0 OR amount_cents > 0),
+  CHECK (amount_dollars != 0 OR amount_cents > 0),
   CHECK ((categoryid IS NULL) = (category_userid IS NULL)),
   CHECK (category_userid IN (userid, 0)),
 

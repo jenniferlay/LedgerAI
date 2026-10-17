@@ -228,3 +228,20 @@ async def test_list_expense_feed_category_filter_excludes_plaid_transactions(
 	assert "expenses.categoryid =" in str(compiled)
 	assert "plaid_transactions.plaid_item_id" in str(compiled)
 	assert "false" in str(compiled).lower()
+
+
+@pytest.mark.asyncio
+async def test_create_expense_income_negative_dollars(db: MagicMock) -> None:
+	data = ExpenseCreate(
+		categoryid=1,
+		amount_dollars=-100,
+		amount_cents=50,
+		note="Paycheck",
+	)
+
+	result = await create_expense(db, user_id=7, data=data)
+
+	assert result.amount_dollars == -100
+	assert result.amount_cents == 50
+	assert result.note == "Paycheck"
+

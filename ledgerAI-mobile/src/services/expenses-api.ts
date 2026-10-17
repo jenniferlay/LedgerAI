@@ -181,9 +181,22 @@ export async function updateExpense(
   payload: ExpensePayload,
 ): Promise<ExpenseFeedItem> {
   const token = await requireAuth('updating expenses');
+  const amount =
+    payload.amount_dollars >= 0
+      ? payload.amount_dollars + payload.amount_cents / 100
+      : payload.amount_dollars - payload.amount_cents / 100;
+
+  const body = {
+    amount,
+    description: payload.note,
+    merchant: payload.merchant,
+    spent_on: payload.spent_on,
+    categoryid: payload.categoryid,
+  };
+
   const expense = await request(`/expenses/${source}/${itemId}`, ExpenseFeedItemSchema, {
     method: 'PUT',
-    body: payload,
+    body,
     token,
   });
   invalidateExpenseCache();

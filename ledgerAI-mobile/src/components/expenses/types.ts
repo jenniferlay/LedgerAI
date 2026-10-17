@@ -3,6 +3,8 @@ import type { MaterialIcons } from '@expo/vector-icons';
 
 export type IconName = ComponentProps<typeof MaterialIcons>['name'];
 
+export type TransactionType = 'expense' | 'income';
+
 export interface ExpenseCategoryOption {
   id: number;
   name: string;
@@ -10,6 +12,7 @@ export interface ExpenseCategoryOption {
 }
 
 export interface ExpenseFormValues {
+  type: TransactionType;
   amount: string;
   merchant: string;
   note: string;

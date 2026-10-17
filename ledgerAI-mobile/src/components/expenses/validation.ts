@@ -29,7 +29,7 @@ export function parseAmount(amountStr: string): {
   dollars: number;
   cents: number;
 } | null {
-  const normalized = amountStr.trim().replace(',', '.');
+  const normalized = amountStr.trim().replace(',', '.').replace('-', '');
   if (!AMOUNT_REGEX.test(normalized)) {
     return null;
   }
@@ -136,12 +136,14 @@ export function validateExpenseForm(values: ExpenseFormValues): {
   }
 
   const parsedAmount = parseAmount(values.amount)!;
+  const isIncome = values.type === 'income';
+  const multiplier = isIncome ? -1 : 1;
 
   return {
     isValid: true,
     errors: {},
     payload: {
-      amount_dollars: parsedAmount.dollars,
+      amount_dollars: parsedAmount.dollars * multiplier,
       amount_cents: parsedAmount.cents,
       note: values.note.trim(),
       merchant: values.merchant.trim() ? values.merchant.trim() : null,

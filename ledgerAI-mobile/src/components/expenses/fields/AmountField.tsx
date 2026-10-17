@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import theme from '@/constants/theme';
+import type { TransactionType } from '../types';
 
 const { colors, spacing, borderRadius, typography } = theme;
 
 interface Props {
   value: string;
+  type?: TransactionType;
   error?: string;
   onChangeText: (text: string) => void;
   onBlur?: () => void;
@@ -13,11 +15,13 @@ interface Props {
 
 export default function AmountField({
   value,
+  type = 'expense',
   error,
   onChangeText,
   onBlur,
 }: Props) {
   const [focused, setFocused] = useState(false);
+  const isIncome = type === 'income';
 
   const handleBlur = () => {
     setFocused(false);
@@ -34,9 +38,11 @@ export default function AmountField({
           Boolean(error) && styles.containerError,
         ]}
       >
-        <Text style={styles.currencyPrefix}>$</Text>
+        <Text style={[styles.currencyPrefix, isIncome && styles.currencyPrefixIncome]}>
+          {isIncome ? '+$' : '$'}
+        </Text>
         <TextInput
-          accessibilityLabel="Expense amount"
+          accessibilityLabel={isIncome ? 'Income amount' : 'Expense amount'}
           style={styles.input}
           value={value}
           onChangeText={onChangeText}
@@ -90,6 +96,9 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '700',
     marginRight: 6,
+  },
+  currencyPrefixIncome: {
+    color: colors.primary,
   },
   input: {
     ...typography.headlineLg,

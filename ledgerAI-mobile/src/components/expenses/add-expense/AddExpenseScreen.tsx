@@ -8,6 +8,7 @@ import {
   AmountField,
   CategorySelectField,
   DateField,
+  ExpenseTypeToggle,
   MerchantField,
   NoteField,
 } from '../fields';
@@ -35,6 +36,7 @@ export default function AddExpenseScreen({
   onDone,
 }: Props) {
   const [values, setValues] = useState<ExpenseFormValues>({
+    type: 'expense',
     amount: '',
     merchant: '',
     note: '',
@@ -105,12 +107,18 @@ export default function AddExpenseScreen({
 
   return (
     <AddFormLayout
-      title="Log Expense"
+      title={values.type === 'income' ? 'Log Income' : 'Log Expense'}
       onCancel={onCancel}
       contentTopSpacing={spacing.sm}
     >
+      <ExpenseTypeToggle
+        value={values.type}
+        onChange={(type) => setFieldValue('type', type)}
+      />
+
       <AmountField
         value={values.amount}
+        type={values.type}
         error={errors.amount}
         onChangeText={(text) => setFieldValue('amount', text)}
         onBlur={() => handleBlurField('amount')}
@@ -143,8 +151,8 @@ export default function AddExpenseScreen({
       />
 
       <PrimaryActionButton
-        label="Save Expense"
-        accessibilityLabel="Save Expense"
+        label={values.type === 'income' ? 'Save Income' : 'Save Expense'}
+        accessibilityLabel={values.type === 'income' ? 'Save Income' : 'Save Expense'}
         icon="check"
         iconPosition="before"
         onPress={handleSave}
