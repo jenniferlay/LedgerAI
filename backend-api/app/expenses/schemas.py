@@ -63,3 +63,8 @@ class ExpenseUpdate(BaseModel):
 			raise ValueError("Amount must not be zero")
 		return self
 
+
+class DeleteResponse(BaseModel):
+	message: str
+
+

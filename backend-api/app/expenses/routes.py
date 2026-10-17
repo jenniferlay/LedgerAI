@@ -8,6 +8,7 @@ from app.auth.dependencies import CurrentUser
 from app.db.database import get_db
 from app.expenses.schemas import (
 	CategoryResponse,
+	DeleteResponse,
 	ExpenseCreate,
 	ExpenseFeedItem,
 	ExpenseResponse,
@@ -101,13 +102,13 @@ async def update_expense(
 	return ExpenseFeedItem.model_validate(updated)
 
 
-@router.delete("/{source}/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{source}/{item_id}", response_model=DeleteResponse)
 async def delete_expense(
 	source: str,
 	item_id: int,
 	current_user: CurrentUser,
 	db: Annotated[AsyncSession, Depends(get_db)],
-) -> None:
+) -> DeleteResponse:
 	if source not in ("manual", "plaid"):
 		raise HTTPException(
 			status_code=status.HTTP_400_BAD_REQUEST,
@@ -120,4 +121,5 @@ async def delete_expense(
 			status_code=status.HTTP_404_NOT_FOUND,
 			detail="Expense item not found",
 		)
+	return DeleteResponse(message="Expense deleted successfully")
 
