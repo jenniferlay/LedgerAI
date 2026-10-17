@@ -100,7 +100,13 @@ async def list_expense_feed(
 		Expense.expenseid.label("id"),
 		(
 			cast(
-				Expense.amount_dollars * 100 + Expense.amount_cents,
+				case(
+					(
+						Expense.amount_dollars < 0,
+						Expense.amount_dollars * 100 - Expense.amount_cents,
+					),
+					else_=Expense.amount_dollars * 100 + Expense.amount_cents,
+				),
 				Numeric(14, 2),
 			)
 			/ 100
@@ -240,7 +246,7 @@ async def update_expense_item(
 			return None
 
 		if data.amount is not None:
-			tx.amount = -data.amount
+			tx.amount = data.amount
 		if data.spent_on is not None:
 			tx.transaction_date = data.spent_on
 		if data.merchant is not None:
@@ -254,7 +260,7 @@ async def update_expense_item(
 		return {
 			"source": "plaid",
 			"id": tx.id,
-			"amount": -float(tx.amount),
+			"amount": float(tx.amount),
 			"spent_on": tx.transaction_date,
 			"merchant": tx.merchant_name or tx.name,
 			"description": tx.name,

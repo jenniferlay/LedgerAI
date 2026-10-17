@@ -181,10 +181,9 @@ export async function updateExpense(
   payload: ExpensePayload,
 ): Promise<ExpenseFeedItem> {
   const token = await requireAuth('updating expenses');
-  const amount =
-    payload.amount_dollars >= 0
-      ? payload.amount_dollars + payload.amount_cents / 100
-      : payload.amount_dollars - payload.amount_cents / 100;
+  const isNegative = payload.amount_dollars < 0 || Object.is(payload.amount_dollars, -0);
+  const totalAmount = Math.abs(payload.amount_dollars) + payload.amount_cents / 100;
+  const amount = isNegative ? -totalAmount : totalAmount;
 
   const body = {
     amount,

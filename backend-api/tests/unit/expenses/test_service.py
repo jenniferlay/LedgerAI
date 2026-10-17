@@ -7,13 +7,15 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.expenses.models import Category, Expense
-from app.expenses.schemas import ExpenseCreate
+from app.expenses.schemas import ExpenseCreate, ExpenseUpdate
 from app.expenses.service import (
 	create_expense,
 	list_categories,
 	list_expense_feed,
 	list_expenses,
+	update_expense_item,
 )
+from app.plaid.models import PlaidItem, PlaidTransaction
 
 
 @pytest.fixture
@@ -244,4 +246,60 @@ async def test_create_expense_income_negative_dollars(db: MagicMock) -> None:
 	assert result.amount_dollars == -100
 	assert result.amount_cents == 50
 	assert result.note == "Paycheck"
+
+
+@pytest.mark.asyncio
+async def test_update_expense_item_plaid_preserves_sign(db: MagicMock) -> None:
+	tx = PlaidTransaction(
+		id=9,
+		plaid_item_id=1,
+		amount=Decimal("12.34"),
+		transaction_date=date(2026, 5, 2),
+		merchant_name="Market",
+		name="CARD PURCHASE",
+	)
+	item = PlaidItem(id=1, user_id=7)
+
+	async def mock_get(entity_class: type, entity_id: int) -> MagicMock | None:
+		if entity_class == PlaidTransaction and entity_id == 9:
+			return tx
+		if entity_class == PlaidItem and entity_id == 1:
+			return item
+		return None
+
+	db.get = AsyncMock(side_effect=mock_get)
+
+	data = ExpenseUpdate(amount=-25.50)
+	result = await update_expense_item(
+		db, user_id=7, source="plaid", item_id=9, data=data
+	)
+
+	assert result is not None
+	assert result["amount"] == -25.50
+	assert tx.amount == -25.50
+
+
+@pytest.mark.asyncio
+async def test_update_expense_item_manual_preserves_sign(db: MagicMock) -> None:
+	expense = Expense(
+		expenseid=1,
+		userid=7,
+		amount_dollars=10,
+		amount_cents=0,
+		note="Coffee",
+		merchant="Cafe",
+		spent_on=date(2026, 5, 3),
+	)
+
+	db.get = AsyncMock(return_value=expense)
+
+	data = ExpenseUpdate(amount=-15.50)
+	result = await update_expense_item(
+		db, user_id=7, source="manual", item_id=1, data=data
+	)
+
+	assert result is not None
+	assert result["amount"] == -15.50
+	assert expense.amount_dollars == -15
+	assert expense.amount_cents == 50
 

@@ -51,7 +51,7 @@ export default function AddExpenseScreen({
     val: ExpenseFormValues[K],
   ) => {
     setValues((prev) => ({ ...prev, [field]: val }));
-    if (errors[field]) {
+    if (errors[field as keyof ExpenseFormErrors]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
     }
   };
