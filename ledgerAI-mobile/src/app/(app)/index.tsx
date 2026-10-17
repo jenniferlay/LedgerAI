@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Button, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { Button, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import theme from '@/constants/theme';
@@ -26,11 +27,14 @@ interface Budget {
 
 export default function AppHomeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { signOut } = useAuth();
+  
   const [isConnectingBank, setIsConnectingBank] = useState(false);
   const [isExchangingBank, setIsExchangingBank] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [linkMessage, setLinkMessage] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [budgets, setBudgets] = useState<Budget[]>([
     {
@@ -80,11 +84,10 @@ export default function AppHomeScreen() {
       iconColor: theme.colors.tertiary,
       iconBgColor: 'rgba(69, 223, 164, 0.15)',
       progressColor: theme.colors.tertiary,
-    },
+    }
   ]);
 
   const handleAddBudget = () => {
-    // Example handler for adding a budget
     const newBudget: Budget = {
       id: Date.now().toString(),
       title: 'New Budget',
@@ -156,67 +159,83 @@ export default function AppHomeScreen() {
     }
   };
 
+  const onRefresh = useCallback(() => setRefreshing(true), []);
+  const onRefreshComplete = useCallback(() => setRefreshing(false), []);
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <NetWorthCard amount={10000} name="John Doe" />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.budgetRow}>
-        {budgets.map((budget) => (
-          <BudgetCard
-            key={budget.id}
-            title={budget.title}
-            spentAmount={budget.spentAmount}
-            totalAmount={budget.totalAmount}
-            leftAmount={budget.leftAmount}
-            percentage={budget.percentage}
-            iconName={budget.iconName}
-            iconColor={budget.iconColor}
-            iconBgColor={budget.iconBgColor}
-            progressColor={budget.progressColor}
+    <View style={[styles.screen, { paddingTop: insets.top }]}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
+            progressBackgroundColor={theme.colors.surfaceContainer}
           />
-        ))}
-      </ScrollView>
-      <Pressable
-        onPress={handleAddBudget}
-        style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
+        }
       >
-        <MaterialIcons name="add-circle" size={20} color={theme.colors.primary} />
-        <Text style={styles.addButtonText}>Add New Budget</Text>
-      </Pressable>
-      <RecentActivity />
-            <Text style={styles.title}>Authenticated Home</Text>
-      {Platform.OS !== 'web' && (
-        <PrimaryActionButton
-          label="Connect bank"
-          accessibilityLabel="Connect bank"
-          icon="account-balance"
-          isLoading={isConnectingBank || isExchangingBank}
-          onPress={() => void handleConnectBank()}
+        <NetWorthCard amount={10000} name="John Doe" />
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.budgetRow}>
+          {budgets.map((budget) => (
+            <BudgetCard
+              key={budget.id}
+              title={budget.title}
+              spentAmount={budget.spentAmount}
+              totalAmount={budget.totalAmount}
+              leftAmount={budget.leftAmount}
+              percentage={budget.percentage}
+              iconName={budget.iconName}
+              iconColor={budget.iconColor}
+              iconBgColor={budget.iconBgColor}
+              progressColor={budget.progressColor}
+            />
+          ))}
+        </ScrollView>
+        <Pressable
+          onPress={handleAddBudget}
+          style={({ pressed }) => [styles.addButton, pressed && styles.addButtonPressed]}
+        >
+          <MaterialIcons name="add-circle" size={20} color={theme.colors.primary} />
+          <Text style={styles.addButtonText}>Add New Budget</Text>
+        </Pressable>
+        
+        <RecentActivity 
+          isRefreshing={refreshing} 
+          onRefreshComplete={onRefreshComplete} 
         />
-      )}
-      {linkError && <Text style={styles.errorMessage} accessibilityRole="alert">{linkError}</Text>}
-      {linkMessage && <Text style={styles.successMessage} accessibilityRole="alert">{linkMessage}</Text>}
-      <Button
-        title="Add Expense"
-        onPress={() => router.push('/(app)/add-expense')}
-      />
-      <Button
-        title="Add Category"
-        onPress={() => router.push('/(app)/add-category')}
-      />
-      <Button
-        title="Simulate Logout"
-        onPress={() => void handleSignOut()}
-      />
-    </ScrollView>
+        
+        <Text style={styles.title}>Authenticated Home</Text>
+        {Platform.OS !== 'web' && (
+          <PrimaryActionButton
+            label="Connect bank"
+            accessibilityLabel="Connect bank"
+            icon="account-balance"
+            isLoading={isConnectingBank || isExchangingBank}
+            onPress={() => void handleConnectBank()}
+          />
+        )}
+        {linkError && <Text style={styles.errorMessage} accessibilityRole="alert">{linkError}</Text>}
+        {linkMessage && <Text style={styles.successMessage} accessibilityRole="alert">{linkMessage}</Text>}
+        <Button title="Add Expense" onPress={() => router.push('/(app)/add-expense')} />
+        <Button title="Add Category" onPress={() => router.push('/(app)/add-category')} />
+        <Button title="Simulate Logout" onPress={() => void handleSignOut()} />
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: theme.colors.surface,
+  },
   container: {
     flexGrow: 1,
     gap: theme.spacing.lg,
     padding: theme.spacing.margin,
-    paddingTop: theme.spacing.marginTop,
+    paddingTop: theme.spacing.md,
     backgroundColor: theme.colors.surface,
   },
   title: {

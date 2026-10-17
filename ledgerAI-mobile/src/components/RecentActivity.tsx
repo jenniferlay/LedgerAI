@@ -131,12 +131,19 @@ function ActivityCard({ item }: { item: ActivityItem }) {
   );
 }
 
-export default function RecentActivity() {
+export default function RecentActivity({
+  isRefreshing,
+  onRefreshComplete,
+}: {
+  isRefreshing?: boolean;
+  onRefreshComplete?: () => void;
+}) {
   const [items, setItems] = useState<ActivityItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const requestVersion = useRef(0);
 
   const loadActivity = useCallback(async () => {
+    console.log('Loading recent activity...');
     const currentRequest = ++requestVersion.current;
     void Promise.resolve().then(() => {
       if (currentRequest === requestVersion.current) {
@@ -156,6 +163,14 @@ export default function RecentActivity() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (isRefreshing) {
+      loadActivity().finally(() => {
+        onRefreshComplete?.();
+      });
+    }
+  }, [isRefreshing, loadActivity, onRefreshComplete]);
 
   useEffect(() => {
     let active = true;
@@ -239,7 +254,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.lg,
   },
-  noteText: { flex: 1   },
+  noteText: { flex: 1 },
   errorContainer: { gap: spacing.xs },
   skeletonCard: {
     flexDirection: 'row',
