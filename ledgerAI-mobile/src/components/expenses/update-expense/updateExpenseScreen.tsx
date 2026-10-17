@@ -53,7 +53,7 @@ export default function UpdateExpenseScreen({
 }: Props) {
   const rawAmount = initialValues.amount ?? '';
   const initialType: TransactionType =
-    initialValues.type ?? (rawAmount.trim().startsWith('-') ? 'income' : 'expense');
+    initialValues.type ?? (rawAmount.trim().startsWith('-') ? 'expense' : rawAmount.trim() ? 'income' : 'expense');
   const initialAmount = rawAmount.trim().replace('-', '');
 
   const [values, setValues] = useState<ExpenseFormValues>({

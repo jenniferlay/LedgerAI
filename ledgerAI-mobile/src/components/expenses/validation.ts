@@ -136,8 +136,8 @@ export function validateExpenseForm(values: ExpenseFormValues): {
   }
 
   const parsedAmount = parseAmount(values.amount)!;
-  const isIncome = values.type === 'income';
-  const multiplier = isIncome ? -1 : 1;
+  const isExpense = values.type === 'expense';
+  const multiplier = isExpense ? -1 : 1;
 
   return {
     isValid: true,

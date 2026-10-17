@@ -127,7 +127,7 @@ async def list_expense_feed(
 		select(
 			literal("plaid").label("source"),
 			PlaidTransaction.id.label("id"),
-			PlaidTransaction.amount.label("amount"),
+			(-PlaidTransaction.amount).label("amount"),
 			PlaidTransaction.transaction_date.label("spent_on"),
 			func.coalesce(
 				PlaidTransaction.merchant_name,
@@ -249,7 +249,7 @@ async def update_expense_item(
 			return None
 
 		if data.amount is not None:
-			tx.amount = data.amount
+			tx.amount = -data.amount
 		if data.spent_on is not None:
 			tx.transaction_date = data.spent_on
 		if data.merchant is not None:
@@ -263,7 +263,7 @@ async def update_expense_item(
 		return {
 			"source": "plaid",
 			"id": tx.id,
-			"amount": float(tx.amount),
+			"amount": -float(tx.amount),
 			"spent_on": tx.transaction_date,
 			"merchant": tx.merchant_name or tx.name,
 			"description": tx.name,

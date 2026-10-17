@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS expenses (
   merchant VARCHAR(255),
   spent_on DATE NOT NULL DEFAULT CURRENT_DATE,
 
-  CHECK (amount_dollars != 0 OR amount_cents > 0),
+  CHECK (amount_dollars != 0),
   CHECK ((categoryid IS NULL) = (category_userid IS NULL)),
   CHECK (category_userid IN (userid, 0)),
 

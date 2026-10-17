@@ -51,7 +51,7 @@ function formatActivityAmount(amount: number): string {
 }
 
 function toActivityItem(item: ExpenseFeedItem): ActivityItem {
-  const isIncome = item.amount < 0;
+  const isIncome = item.amount > 0;
 
   return {
     id: `${item.source}-${item.id}`,

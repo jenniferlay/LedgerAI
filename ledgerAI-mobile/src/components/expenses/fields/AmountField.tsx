@@ -38,8 +38,8 @@ export default function AmountField({
           Boolean(error) && styles.containerError,
         ]}
       >
-        <Text style={[styles.currencyPrefix, isIncome && styles.currencyPrefixIncome]}>
-          {isIncome ? '+$' : '$'}
+        <Text style={[styles.currencyPrefix, isIncome ? styles.currencyPrefixIncome : styles.currencyPrefixExpense]}>
+          {isIncome ? '+$' : '-$'}
         </Text>
         <TextInput
           accessibilityLabel={isIncome ? 'Income amount' : 'Expense amount'}
@@ -99,6 +99,9 @@ const styles = StyleSheet.create({
   },
   currencyPrefixIncome: {
     color: colors.primary,
+  },
+  currencyPrefixExpense: {
+    color: colors.onSurfaceVariant,
   },
   input: {
     ...typography.headlineLg,
