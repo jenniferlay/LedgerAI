@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import theme from '@/constants/theme';
-import { getTodayIsoDate } from './validation';
+import { getTodayIsoDate } from '../validation';
 
 const { colors, spacing, borderRadius, typography } = theme;
 

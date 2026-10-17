@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { getAccessToken, invalidateSession } from '@/context/auth';
-import type { ExpensePayload } from '@/components/expenses/add-expense/types';
+import type { ExpensePayload } from '@/components/expenses/types';
 
 const ExpenseResponseSchema = z.object({
   expenseid: z.number(),

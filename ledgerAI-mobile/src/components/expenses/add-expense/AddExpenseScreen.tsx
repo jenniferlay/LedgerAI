@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { Alert } from 'react-native';
 import { spacing } from '@/constants/theme';
-import { createExpense, updateExpense, deleteExpense } from '@/services/expenses-api';
+import { createExpense } from '@/services/expenses-api';
 import AddFormLayout from '@/components/shared/AddFormLayout';
 import PrimaryActionButton from '@/components/shared/PrimaryActionButton';
-import AmountField from './AmountField';
-import MerchantField from './MerchantField';
-import NoteField from './NoteField';
-import DateField from './DateField';
-import CategorySelectField from './CategorySelectField';
+import {
+  AmountField,
+  CategorySelectField,
+  DateField,
+  MerchantField,
+  NoteField,
+} from '../fields';
 import {
   getTodayIsoDate,
   validateAmount,
@@ -16,42 +18,28 @@ import {
   validateMerchant,
   validateNote,
   validateSpentOn,
-} from './validation';
+} from '../validation';
 import type {
   ExpenseFormErrors,
   ExpenseFormValues,
   ExpensePayload,
-} from './types';
+} from '../types';
 
 interface Props {
   onCancel?: () => void;
   onDone?: (expense: ExpensePayload) => void;
-  onDelete?: () => void;
-  initialValues?: {
-    source?: string;
-    itemId?: number;
-    amount?: string;
-    merchant?: string;
-    note?: string;
-    spentOn?: string;
-    categoryId?: number | null;
-  };
-  isDeleting?: boolean;
 }
 
 export default function AddExpenseScreen({
   onCancel,
   onDone,
-  onDelete,
-  initialValues,
-  isDeleting,
 }: Props) {
   const [values, setValues] = useState<ExpenseFormValues>({
-    amount: initialValues?.amount ?? '',
-    merchant: initialValues?.merchant ?? '',
-    note: initialValues?.note ?? '',
-    spentOn: initialValues?.spentOn ?? getTodayIsoDate(),
-    categoryId: initialValues?.categoryId ?? 1,
+    amount: '',
+    merchant: '',
+    note: '',
+    spentOn: getTodayIsoDate(),
+    categoryId: 1,
   });
   const [errors, setErrors] = useState<ExpenseFormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -92,11 +80,7 @@ export default function AddExpenseScreen({
 
     setIsSubmitting(true);
     try {
-      if (initialValues?.source && initialValues?.itemId !== undefined) {
-        await updateExpense(initialValues.source, initialValues.itemId, result.payload);
-      } else {
-        await createExpense(result.payload);
-      }
+      await createExpense(result.payload);
       if (onDone) {
         onDone(result.payload);
       } else {
@@ -121,10 +105,8 @@ export default function AddExpenseScreen({
 
   return (
     <AddFormLayout
-      title={initialValues?.source ? 'Edit Expense' : 'Log Expense'}
+      title="Log Expense"
       onCancel={onCancel}
-      onDelete={onDelete}
-      isDeleting={isDeleting}
       contentTopSpacing={spacing.sm}
     >
       <AmountField
@@ -161,8 +143,8 @@ export default function AddExpenseScreen({
       />
 
       <PrimaryActionButton
-        label={initialValues?.source ? 'Update Expense' : 'Save Expense'}
-        accessibilityLabel={initialValues?.source ? 'Update Expense' : 'Save Expense'}
+        label="Save Expense"
+        accessibilityLabel="Save Expense"
         icon="check"
         iconPosition="before"
         onPress={handleSave}

@@ -5,7 +5,7 @@ import theme from '@/constants/theme';
 import {
   DEFAULT_EXPENSE_CATEGORIES,
   type ExpenseCategoryOption,
-} from './types';
+} from '../types';
 
 const { colors, spacing, borderRadius, typography } = theme;
 

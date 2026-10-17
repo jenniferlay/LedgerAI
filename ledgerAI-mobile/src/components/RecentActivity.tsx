@@ -105,7 +105,7 @@ function ActivityCard({ item, router }: { item: ActivityItem; router: any }) {
       accessibilityLabel={`Edit expense ${item.merchant}, ${item.amount}`}
       onPress={() => {
         router.push({
-          pathname: '/(app)/add-expense',
+          pathname: '/(app)/(home)/update-expense',
           params: {
             editSource: item.source,
             editId: String(item.rawId),
