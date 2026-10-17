@@ -36,5 +36,8 @@ CREATE TABLE IF NOT EXISTS plaid_transactions (
         UNIQUE (plaid_item_id, transaction_id)
 );
 
+ALTER TABLE plaid_transactions
+    ADD COLUMN IF NOT EXISTS category_id BIGINT REFERENCES categories(category_id) ON DELETE SET NULL;
+
 CREATE INDEX IF NOT EXISTS ix_plaid_transactions_item_date
     ON plaid_transactions (plaid_item_id, transaction_date DESC, id DESC);
