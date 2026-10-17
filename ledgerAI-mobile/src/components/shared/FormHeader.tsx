@@ -32,7 +32,6 @@ export default function FormHeader({ title, onCancel }: Props) {
           <Text style={styles.cancelText}>Cancel</Text>
         </Pressable>
 
-        <Text style={styles.title}>{title}</Text>
       </View>
     </View>
   );
@@ -70,12 +69,5 @@ const styles = StyleSheet.create({
   cancelText: {
     ...typography.labelLg,
     color: colors.onSurfaceVariant,
-  },
-  title: {
-    flex: 1,
-    ...typography.headlineSm,
-    color: colors.onSurface,
-    letterSpacing: -0.45,
-    textAlign: 'center',
-  },
+  }
 });
