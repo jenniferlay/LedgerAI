@@ -11,8 +11,6 @@ from app.expenses.schemas import (
 	ExpenseCreate,
 	ExpenseFeedItem,
 	ExpenseResponse,
-	ManualExpenseFeedItem,
-	PlaidExpenseFeedItem,
 )
 from app.expenses.service import create_expense, list_categories, list_expense_feed
 
@@ -70,11 +68,4 @@ async def get_expenses(
 		limit=limit,
 		offset=offset,
 	)
-	return [
-		(
-			ManualExpenseFeedItem.model_validate(item)
-			if item["source"] == "manual"
-			else PlaidExpenseFeedItem.model_validate(item)
-		)
-		for item in feed_items
-	]
+	return [ExpenseFeedItem.model_validate(item) for item in feed_items]

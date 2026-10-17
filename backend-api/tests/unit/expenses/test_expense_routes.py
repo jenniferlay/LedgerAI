@@ -68,6 +68,10 @@ def test_get_expenses_returns_manual_and_plaid_feed_items(
 			"merchant": "Cafe",
 			"description": "Lunch",
 			"categoryid": 42,
+			"transaction_id": None,
+			"account_id": None,
+			"pending": None,
+			"currency": None,
 		},
 		{
 			"source": "plaid",
@@ -76,6 +80,7 @@ def test_get_expenses_returns_manual_and_plaid_feed_items(
 			"spent_on": "2026-05-02",
 			"merchant": "Market",
 			"description": "CARD PURCHASE",
+			"categoryid": None,
 			"transaction_id": "transaction-123",
 			"account_id": "account-456",
 			"pending": False,

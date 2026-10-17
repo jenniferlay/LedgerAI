@@ -25,33 +25,14 @@ class ExpenseResponse(BaseModel):
 	spent_on: date
 
 
-class ManualExpenseFeedItem(BaseModel):
-	source: Literal["manual"]
+class ExpenseFeedItem(BaseModel):
+	source: Literal["manual", "plaid"]
 	id: int
 	amount: float
 	spent_on: date
 	merchant: str | None
 	description: str
-	categoryid: int | None
-
-
-class PlaidExpenseFeedItem(BaseModel):
-	source: Literal["plaid"]
-	id: int
-	amount: float
-	spent_on: date
-	merchant: str | None
-	description: str
-	transaction_id: str
-	account_id: str
-	pending: bool
-	currency: str | None
-
-
-ExpenseFeedItem = Annotated[
-	ManualExpenseFeedItem | PlaidExpenseFeedItem,
-	Field(discriminator="source"),
-]
+	categoryid: int | None = None
 
 
 class CategoryResponse(BaseModel):

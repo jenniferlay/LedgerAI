@@ -12,29 +12,19 @@ const ExpenseResponseSchema = z.object({
   spent_on: z.string(),
 });
 
-const ExpenseFeedItemSchema = z.discriminatedUnion('source', [
-  z.object({
-    source: z.literal('manual'),
-    id: z.number(),
-    amount: z.number(),
-    spent_on: z.string(),
-    merchant: z.string().nullable(),
-    description: z.string(),
-    categoryid: z.number().nullable(),
-  }),
-  z.object({
-    source: z.literal('plaid'),
-    id: z.number(),
-    amount: z.number(),
-    spent_on: z.string(),
-    merchant: z.string().nullable(),
-    description: z.string(),
-    transaction_id: z.string(),
-    account_id: z.string(),
-    pending: z.boolean(),
-    currency: z.string().nullable(),
-  }),
-]);
+const ExpenseFeedItemSchema = z.object({
+  source: z.enum(['manual', 'plaid']),
+  id: z.number(),
+  amount: z.number(),
+  spent_on: z.string(),
+  merchant: z.string().nullable(),
+  description: z.string(),
+  categoryid: z.number().nullable().optional(),
+  transaction_id: z.string().nullable().optional(),
+  account_id: z.string().nullable().optional(),
+  pending: z.boolean().nullable().optional(),
+  currency: z.string().nullable().optional(),
+});
 
 export type ExpenseFeedItem = z.infer<typeof ExpenseFeedItemSchema>;
 
