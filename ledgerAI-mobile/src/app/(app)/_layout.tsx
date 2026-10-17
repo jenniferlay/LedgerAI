@@ -28,7 +28,7 @@ export default function AppLayout() {
       />
 
       <Tabs.Screen
-        name="add-category" // Assuming you are routing Marty to here based on your snippet
+        name="add-category"
         options={{
           title: 'Marty',
           tabBarLabel: () => null, 
