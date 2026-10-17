@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { getExpenses, subscribeToExpenseUpdates } from '@/services/expenses-api';
 import type { ExpenseFeedItem } from '@/services/expenses-api';
+import {useRouter} from 'expo-router';
 
 const SKELETON_ROWS = 4;
 const amountFormatter = new Intl.NumberFormat(undefined, {
@@ -17,12 +18,17 @@ const { colors, spacing, borderRadius } = theme;
 
 export interface ActivityItem {
   id: string;
+  source: 'manual' | 'plaid';
+  rawId: number;
   merchant: string;
   category: string;
   date: string;
+  rawDate: string;
   amount: string;
+  rawAmount: number;
   kind: 'income' | 'expense';
   note?: string;
+  categoryId?: number | null;
 }
 
 function formatActivityDate(value: string): string {
@@ -49,12 +55,17 @@ function toActivityItem(item: ExpenseFeedItem): ActivityItem {
 
   return {
     id: `${item.source}-${item.id}`,
+    source: item.source,
+    rawId: item.id,
     merchant: item.merchant || item.description,
     category: item.source === 'manual' ? 'Manual expense' : 'Bank transaction',
     date: formatActivityDate(item.spent_on),
+    rawDate: item.spent_on.slice(0, 10),
     amount: formatActivityAmount(Math.abs(item.amount) * (isIncome ? 1 : -1)),
+    rawAmount: Math.abs(item.amount),
     kind: isIncome ? 'income' : 'expense',
     note: item.merchant ? item.description : undefined,
+    categoryId: item.categoryid,
   };
 }
 
@@ -86,48 +97,67 @@ function ActivityError({ message, onRetry }: { message: string; onRetry: () => v
   );
 }
 
-function ActivityCard({ item }: { item: ActivityItem }) {
+function ActivityCard({ item, router }: { item: ActivityItem; router: any }) {
   const isIncome = item.kind === 'income';
-
   return (
-    <ThemedView type="surfaceContainer" style={styles.card}>
-      <View style={styles.row}>
-        <ThemedView
-          type={isIncome ? 'secondaryContainer' : 'surfaceContainerHigh'}
-          style={styles.icon}
-        >
-          <MaterialIcons
-            name={isIncome ? 'payments' : 'receipt-long'}
-            size={20}
-            color={isIncome ? colors.primary : colors.onSurface}
-          />
-        </ThemedView>
-        <View style={styles.details}>
-          <ThemedText type="smallBold" numberOfLines={1}>{item.merchant}</ThemedText>
-          <ThemedText
-            type="small"
-            themeColor={isIncome ? 'primary' : 'onSurfaceVariant'}
-            numberOfLines={1}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`Edit expense ${item.merchant}, ${item.amount}`}
+      onPress={() => {
+        router.push({
+          pathname: '/(app)/add-expense',
+          params: {
+            editSource: item.source,
+            editId: String(item.rawId),
+            amount: String(item.rawAmount),
+            merchant: item.merchant,
+            note: item.note ?? '',
+            spentOn: item.rawDate,
+            categoryId: String(item.categoryId ?? 1),
+          },
+        });
+      }}
+      style={({ pressed }) => [{ borderRadius: borderRadius.xl }, pressed && { opacity: 0.85 }]}
+    >
+      <ThemedView type="surfaceContainer" style={styles.card}>
+        <View style={styles.row}>
+          <ThemedView
+            type={isIncome ? 'secondaryContainer' : 'surfaceContainerHigh'}
+            style={styles.icon}
           >
-            {item.category} · {item.date}
+            <MaterialIcons
+              name={isIncome ? 'payments' : 'receipt-long'}
+              size={20}
+              color={isIncome ? colors.primary : colors.onSurface}
+            />
+          </ThemedView>
+          <View style={styles.details}>
+            <ThemedText type="smallBold" numberOfLines={1}>{item.merchant}</ThemedText>
+            <ThemedText
+              type="small"
+              themeColor={isIncome ? 'primary' : 'onSurfaceVariant'}
+              numberOfLines={1}
+            >
+              {item.category} · {item.date}
+            </ThemedText>
+          </View>
+          <ThemedText
+            type="smallBold"
+            themeColor={isIncome ? 'primary' : 'onSurface'}
+            style={styles.amount}
+          >
+            {item.amount}
           </ThemedText>
         </View>
-        <ThemedText
-          type="smallBold"
-          themeColor={isIncome ? 'primary' : 'onSurface'}
-          style={styles.amount}
-        >
-          {item.amount}
-        </ThemedText>
-      </View>
-      {item.note && (
-        <ThemedView type="surfaceContainerLow" style={styles.note}>
-          <ThemedText type="small" themeColor="onSurfaceVariant" numberOfLines={2} style={styles.noteText}>
-            {item.note}
-          </ThemedText>
-        </ThemedView>
-      )}
-    </ThemedView>
+        {item.note && (
+          <ThemedView type="surfaceContainerLow" style={styles.note}>
+            <ThemedText type="small" themeColor="onSurfaceVariant" numberOfLines={2} style={styles.noteText}>
+              {item.note}
+            </ThemedText>
+          </ThemedView>
+        )}
+      </ThemedView>
+    </Pressable>
   );
 }
 
@@ -141,9 +171,9 @@ export default function RecentActivity({
   const [items, setItems] = useState<ActivityItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const requestVersion = useRef(0);
+  const router = useRouter();
 
   const loadActivity = useCallback(async () => {
-    console.log('Loading recent activity...');
     const currentRequest = ++requestVersion.current;
     void Promise.resolve().then(() => {
       if (currentRequest === requestVersion.current) {
@@ -203,7 +233,7 @@ export default function RecentActivity({
     content = (
       <>
         {error && <ActivityError message={error} onRetry={() => void loadActivity()} />}
-        {items.map((item) => <ActivityCard key={item.id} item={item} />)}
+        {items.map((item) => <ActivityCard key={item.id} item={item} router={router} />)}
       </>
     );
   }

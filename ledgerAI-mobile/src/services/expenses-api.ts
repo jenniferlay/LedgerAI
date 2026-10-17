@@ -175,6 +175,33 @@ export async function getExpenses(limit = 5): Promise<ExpenseFeedItem[]> {
   }
 }
 
+export async function updateExpense(
+  source: string,
+  itemId: number,
+  payload: ExpensePayload,
+): Promise<ExpenseFeedItem> {
+  const token = await requireAuth('updating expenses');
+  const expense = await request(`/expenses/${source}/${itemId}`, ExpenseFeedItemSchema, {
+    method: 'PUT',
+    body: payload,
+    token,
+  });
+  invalidateExpenseCache();
+  return expense;
+}
+
+export async function deleteExpense(
+  source: string,
+  itemId: number,
+): Promise<void> {
+  const token = await requireAuth('deleting expenses');
+  await request(`/expenses/${source}/${itemId}`, z.any(), {
+    method: 'DELETE',
+    token,
+  });
+  invalidateExpenseCache();
+}
+
 export async function createExpense(
   payload: ExpensePayload,
 ): Promise<z.infer<typeof ExpenseResponseSchema>> {

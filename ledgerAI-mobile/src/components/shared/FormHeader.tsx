@@ -9,9 +9,11 @@ export const FORM_HEADER_HEIGHT = 56;
 interface Props {
   title: string;
   onCancel?: () => void;
+  onDelete?: () => void;
+  isDeleting?: boolean;
 }
 
-export default function FormHeader({ title, onCancel }: Props) {
+export default function FormHeader({ title, onCancel, onDelete, isDeleting }: Props) {
   const insets = useSafeAreaInsets();
 
   return (
@@ -32,6 +34,21 @@ export default function FormHeader({ title, onCancel }: Props) {
           <Text style={styles.cancelText}>Cancel</Text>
         </Pressable>
 
+        {onDelete && (
+          <Pressable
+            accessibilityLabel="Delete Expense"
+            accessibilityRole="button"
+            onPress={onDelete}
+            disabled={isDeleting}
+            style={({ pressed }) => [styles.deleteBtn, pressed && { opacity: 0.7 }]}
+          >
+            <MaterialIcons
+              name="delete-outline"
+              size={20}
+              color={colors.error}
+            />
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -69,5 +86,11 @@ const styles = StyleSheet.create({
   cancelText: {
     ...typography.labelLg,
     color: colors.onSurfaceVariant,
-  }
+  },
+  deleteBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

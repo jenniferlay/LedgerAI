@@ -15,6 +15,8 @@ interface Props {
   title: string;
   contentTopSpacing?: number;
   onCancel?: () => void;
+  onDelete?: () => void;
+  isDeleting?: boolean;
   children: React.ReactNode;
 }
 
@@ -22,6 +24,8 @@ export default function AddFormLayout({
   title,
   contentTopSpacing = 0,
   onCancel,
+  onDelete,
+  isDeleting,
   children,
 }: Props) {
   const insets = useSafeAreaInsets();
@@ -29,7 +33,12 @@ export default function AddFormLayout({
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" />
-      <FormHeader title={title} onCancel={onCancel} />
+      <FormHeader
+        title={title}
+        onCancel={onCancel}
+        onDelete={onDelete}
+        isDeleting={isDeleting}
+      />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
