@@ -98,20 +98,12 @@ async def list_expense_feed(
 	manual_query = select(
 		literal("manual").label("source"),
 		Expense.expenseid.label("id"),
-		case(
-			(
-				Expense.amount_dollars < 0,
-				cast(
-					Expense.amount_dollars * 100 - Expense.amount_cents,
-					Numeric(14, 2),
-				)
-				/ 100,
-			),
-			else_=cast(
+		(
+			cast(
 				Expense.amount_dollars * 100 + Expense.amount_cents,
 				Numeric(14, 2),
 			)
-			/ 100,
+			/ 100
 		).label("amount"),
 		Expense.spent_on.label("spent_on"),
 		Expense.merchant.label("merchant"),
@@ -127,7 +119,7 @@ async def list_expense_feed(
 		select(
 			literal("plaid").label("source"),
 			PlaidTransaction.id.label("id"),
-			(-PlaidTransaction.amount).label("amount"),
+			PlaidTransaction.amount.label("amount"),
 			PlaidTransaction.transaction_date.label("spent_on"),
 			func.coalesce(
 				PlaidTransaction.merchant_name,
@@ -189,7 +181,6 @@ async def list_expense_feed(
 	)
 	result = await db.execute(statement)
 	return list(result.mappings().all())
-
 
 async def update_expense_item(
 	db: AsyncSession,
