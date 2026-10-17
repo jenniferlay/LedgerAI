@@ -180,3 +180,107 @@ async def list_expense_feed(
 	)
 	result = await db.execute(statement)
 	return list(result.mappings().all())
+
+
+async def update_expense_item(
+	db: AsyncSession,
+	user_id: int,
+	source: str,
+	item_id: int,
+	data: Any,
+) -> dict[str, Any] | None:
+	if source == "manual":
+		expense = await db.get(Expense, item_id)
+		if not expense or expense.userid != user_id:
+			return None
+
+		if data.amount is not None:
+			total_cents = round(data.amount * 100)
+			expense.amount_dollars = int(total_cents // 100)
+			expense.amount_cents = int(total_cents % 100)
+		if data.spent_on is not None:
+			expense.spent_on = data.spent_on
+		if data.merchant is not None:
+			expense.merchant = data.merchant
+		if data.categoryid is not None:
+			expense.categoryid = data.categoryid
+			expense.category_userid = (
+				select(Category.userid)
+				.where(Category.categoryid == data.categoryid)
+				.scalar_subquery()
+			)
+		if data.description is not None:
+			expense.note = data.description
+
+		await db.commit()
+		await db.refresh(expense)
+
+		return {
+			"source": "manual",
+			"id": expense.expenseid,
+			"amount": float(expense.amount_dollars) + float(expense.amount_cents) / 100.0,
+			"spent_on": expense.spent_on,
+			"merchant": expense.merchant,
+			"description": expense.note,
+			"categoryid": expense.categoryid,
+		}
+
+	elif source == "plaid":
+		tx = await db.get(PlaidTransaction, item_id)
+		if not tx:
+			return None
+		item = await db.get(PlaidItem, tx.plaid_item_id)
+		if not item or item.user_id != user_id:
+			return None
+
+		if data.amount is not None:
+			tx.amount = data.amount
+		if data.spent_on is not None:
+			tx.transaction_date = data.spent_on
+		if data.merchant is not None:
+			tx.merchant_name = data.merchant
+		if data.description is not None:
+			tx.name = data.description
+
+		await db.commit()
+		await db.refresh(tx)
+
+		return {
+			"source": "plaid",
+			"id": tx.id,
+			"amount": float(tx.amount),
+			"spent_on": tx.transaction_date,
+			"merchant": tx.merchant_name or tx.name,
+			"description": tx.name,
+			"categoryid": None,
+		}
+
+	return None
+
+
+async def delete_expense_item(
+	db: AsyncSession,
+	user_id: int,
+	source: str,
+	item_id: int,
+) -> bool:
+	if source == "manual":
+		expense = await db.get(Expense, item_id)
+		if not expense or expense.userid != user_id:
+			return False
+		await db.delete(expense)
+		await db.commit()
+		return True
+
+	elif source == "plaid":
+		tx = await db.get(PlaidTransaction, item_id)
+		if not tx:
+			return False
+		item = await db.get(PlaidItem, tx.plaid_item_id)
+		if not item or item.user_id != user_id:
+			return False
+		await db.delete(tx)
+		await db.commit()
+		return True
+
+	return False

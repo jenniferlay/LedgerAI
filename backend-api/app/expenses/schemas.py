@@ -41,3 +41,13 @@ class CategoryResponse(BaseModel):
 	categoryid: int
 	parent_categoryid: int | None
 	name: str
+
+class ExpenseUpdate(BaseModel):
+	model_config = ConfigDict(extra="forbid")
+
+	amount: float | None = Field(default=None, gt=0)
+	spent_on: date | None = None
+	merchant: str | None = Field(default=None, max_length=255)
+	categoryid: int | None = Field(default=None, gt=0)
+	description: str | None = Field(default=None, min_length=1)
+

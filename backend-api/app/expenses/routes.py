@@ -11,8 +11,15 @@ from app.expenses.schemas import (
 	ExpenseCreate,
 	ExpenseFeedItem,
 	ExpenseResponse,
+	ExpenseUpdate,
 )
-from app.expenses.service import create_expense, list_categories, list_expense_feed
+from app.expenses.service import (
+	create_expense,
+	delete_expense_item,
+	list_categories,
+	list_expense_feed,
+	update_expense_item,
+)
 
 router = APIRouter(prefix="/expenses", tags=["expenses"])
 
@@ -69,3 +76,48 @@ async def get_expenses(
 		offset=offset,
 	)
 	return [ExpenseFeedItem.model_validate(item) for item in feed_items]
+
+
+@router.put("/{source}/{item_id}", response_model=ExpenseFeedItem)
+async def update_expense(
+	source: str,
+	item_id: int,
+	expense_data: ExpenseUpdate,
+	current_user: CurrentUser,
+	db: Annotated[AsyncSession, Depends(get_db)],
+) -> ExpenseFeedItem:
+	if source not in ("manual", "plaid"):
+		raise HTTPException(
+			status_code=status.HTTP_400_BAD_REQUEST,
+			detail="Source must be 'manual' or 'plaid'",
+		)
+
+	updated = await update_expense_item(db, current_user.userid, source, item_id, expense_data)
+	if not updated:
+		raise HTTPException(
+			status_code=status.HTTP_404_NOT_FOUND,
+			detail="Expense item not found",
+		)
+	return ExpenseFeedItem.model_validate(updated)
+
+
+@router.delete("/{source}/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_expense(
+	source: str,
+	item_id: int,
+	current_user: CurrentUser,
+	db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+	if source not in ("manual", "plaid"):
+		raise HTTPException(
+			status_code=status.HTTP_400_BAD_REQUEST,
+			detail="Source must be 'manual' or 'plaid'",
+		)
+
+	success = await delete_expense_item(db, current_user.userid, source, item_id)
+	if not success:
+		raise HTTPException(
+			status_code=status.HTTP_404_NOT_FOUND,
+			detail="Expense item not found",
+		)
+

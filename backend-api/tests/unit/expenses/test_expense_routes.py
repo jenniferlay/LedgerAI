@@ -87,3 +87,58 @@ def test_get_expenses_returns_manual_and_plaid_feed_items(
 			"currency": "USD",
 		},
 	]
+
+
+def test_update_expense_item_route(monkeypatch: pytest.MonkeyPatch) -> None:
+	monkeypatch.setitem(
+		app.dependency_overrides,
+		get_current_user,
+		lambda: SimpleNamespace(userid=7),
+	)
+	monkeypatch.setitem(app.dependency_overrides, get_db, lambda: AsyncMock())
+	monkeypatch.setattr(
+		routes,
+		"update_expense_item",
+		AsyncMock(
+			return_value={
+				"source": "manual",
+				"id": 1,
+				"amount": 15.00,
+				"spent_on": date(2026, 5, 3),
+				"merchant": "Updated Cafe",
+				"description": "Updated Lunch",
+				"categoryid": 42,
+			}
+		),
+	)
+
+	with TestClient(app) as client:
+		response = client.put(
+			"/expenses/manual/1",
+			json={"amount": 15.00, "merchant": "Updated Cafe", "description": "Updated Lunch"},
+		)
+
+	assert response.status_code == 200
+	data = response.json()
+	assert data["amount"] == 15.00
+	assert data["merchant"] == "Updated Cafe"
+
+
+def test_delete_expense_item_route(monkeypatch: pytest.MonkeyPatch) -> None:
+	monkeypatch.setitem(
+		app.dependency_overrides,
+		get_current_user,
+		lambda: SimpleNamespace(userid=7),
+	)
+	monkeypatch.setitem(app.dependency_overrides, get_db, lambda: AsyncMock())
+	monkeypatch.setattr(
+		routes,
+		"delete_expense_item",
+		AsyncMock(return_value=True),
+	)
+
+	with TestClient(app) as client:
+		response = client.delete("/expenses/manual/1")
+
+	assert response.status_code == 204
+
