@@ -1,10 +1,16 @@
-import React, { useState } from 'react';
-import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  LayoutChangeEvent,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import theme from '@/constants/theme';
 import PressableScale from '@/components/shared/PressableScale';
 import SectionHeader, { sectionHeaderStyles } from './SectionHeader';
-import { CATEGORY_ICONS, type IconName } from './data';
+import { searchIcons, type IconName } from './data';
 
 const { colors, spacing, borderRadius } = theme;
 
@@ -18,7 +24,11 @@ interface Props {
 
 export default function IconGrid({ selected, onSelect }: Props) {
   const [width, setWidth] = useState(0);
+  const [query, setQuery] = useState('');
+
   const size = width > 0 ? (width - GAP * (COLUMNS - 1)) / COLUMNS : 0;
+  const icons = useMemo(() => searchIcons(query), [query]);
+  const isSearching = query.trim().length > 0;
 
   const onLayout = (event: LayoutChangeEvent) =>
     setWidth(event.nativeEvent.layout.width);
@@ -28,13 +38,51 @@ export default function IconGrid({ selected, onSelect }: Props) {
       <SectionHeader
         label="Select Icon"
         right={
-          <Text style={sectionHeaderStyles.rightOutline}>Vector Library</Text>
+          <Text style={sectionHeaderStyles.rightOutline}>
+            {isSearching ? `${icons.length} found` : 'Popular'}
+          </Text>
         }
       />
+
       <View style={styles.vault}>
+        <View style={styles.searchBar}>
+          <MaterialIcons
+            name="search"
+            size={20}
+            color={colors.onSurfaceVariant}
+          />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Search icons (e.g. coffee, car, gift)"
+            placeholderTextColor={colors.onSurfaceVariant}
+            style={styles.searchInput}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+            clearButtonMode="never"
+            accessibilityLabel="Search icons"
+          />
+          {isSearching && (
+            <PressableScale
+              accessibilityLabel="Clear search"
+              accessibilityRole="button"
+              scale={0.9}
+              onPress={() => setQuery('')}
+              style={styles.clearButton}
+            >
+              <MaterialIcons
+                name="close"
+                size={18}
+                color={colors.onSurfaceVariant}
+              />
+            </PressableScale>
+          )}
+        </View>
+
         <View style={styles.grid} onLayout={onLayout}>
           {size > 0 &&
-            CATEGORY_ICONS.map((icon) => {
+            icons.map((icon) => {
               const active = icon === selected;
               return (
                 <PressableScale
@@ -59,6 +107,12 @@ export default function IconGrid({ selected, onSelect }: Props) {
               );
             })}
         </View>
+
+        {isSearching && icons.length === 0 && (
+          <Text style={styles.emptyText}>
+            No icons match “{query.trim()}”
+          </Text>
+        )}
       </View>
     </View>
   );
@@ -70,6 +124,30 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceContainerLow,
     padding: spacing.sm,
     borderRadius: borderRadius.xl,
+    gap: spacing.sm,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.surfaceContainerHigh,
+    borderRadius: borderRadius.xl,
+    paddingHorizontal: 12,
+    height: 44,
+  },
+  searchInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 15,
+    color: colors.onSurfaceVariant,
+    textAlignVertical: 'center',
+    lineHeight: 20
+  },
+  clearButton: {
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP },
   cell: {
@@ -85,5 +163,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 3,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: colors.onSurfaceVariant,
+    paddingVertical: spacing.md,
   },
 });
