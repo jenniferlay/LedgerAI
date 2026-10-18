@@ -5,7 +5,7 @@ CREATE TABLE categories (
   userid BIGINT NOT NULL REFERENCES users(userid) ON DELETE CASCADE,  -- 0 = global
   parent_categoryid BIGINT,
   name VARCHAR(100) NOT NULL CHECK (length(btrim(name)) > 0),
-  icon VARCHAR(50),
+  icon VARCHAR(50) CHECK (icon IS NULL OR icon ~ '^[a-z0-9-]+$'),  -- format only; allowed names are enforced by the API
 
   UNIQUE (categoryid, userid),
 
@@ -18,20 +18,20 @@ CREATE TABLE categories (
 
 -- General must be inserted first: expenses/plaid_transactions default to categoryid 1
 INSERT INTO categories (userid, name, icon)
-VALUES (0, 'General', 'tag')
+VALUES (0, 'General', 'label')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO categories (userid, name, icon)
 VALUES
-  (0, 'Food & Dining', 'utensils'),
+  (0, 'Food & Dining', 'restaurant'),
   (0, 'Groceries',     'shopping-cart'),
-  (0, 'Transport',     'car'),
+  (0, 'Transport',     'directions-car'),
   (0, 'Housing',       'home'),
-  (0, 'Utilities',     'bolt'),
-  (0, 'Health',        'heart'),
-  (0, 'Entertainment', 'film'),
+  (0, 'Utilities',     'flash-on'),
+  (0, 'Health',        'favorite'),
+  (0, 'Entertainment', 'movie'),
   (0, 'Shopping',      'shopping-bag'),
-  (0, 'Travel',        'plane')
+  (0, 'Travel',        'flight')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO categories (userid, parent_categoryid, name)
