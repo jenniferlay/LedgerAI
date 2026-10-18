@@ -3,15 +3,18 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import theme from '@/constants/theme';
 import ProgressBar from '@/components/categories/budgetPage/progressBar';
-import { BudgetGroupData } from '@/components/categories/budgetPage/budgets';
+import { BudgetGroupData } from '@/services/budgets-api';
 import { formatMoney, percent } from '@/components/categories/budgetPage/format';
 
 export default function BudgetGroup({ group }: { group: BudgetGroupData }) {
   const [expanded, setExpanded] = useState(true);
 
-  // Parent totals are derived from nested budgets
-  const spent = group.children.reduce((s, c) => s + c.spent, 0);
-  const limit = group.children.reduce((s, c) => s + c.limit, 0);
+  const spent = group.spent;
+  const limit = group.limit;
+
+  const iconName = (group.icon && group.icon in MaterialIcons.glyphMap
+    ? group.icon
+    : 'folder') as keyof typeof MaterialIcons.glyphMap;
 
   return (
     <View style={styles.card}>
@@ -20,7 +23,7 @@ export default function BudgetGroup({ group }: { group: BudgetGroupData }) {
         <View style={styles.parentTop}>
           <View style={styles.titleWrap}>
             <View style={styles.iconBox}>
-              <MaterialIcons name={group.icon} size={20} color={colors.primary} />
+              <MaterialIcons name={iconName} size={20} color={colors.primary} />
             </View>
             <Text style={styles.title} numberOfLines={1}>{group.name}</Text>
           </View>
@@ -42,7 +45,7 @@ export default function BudgetGroup({ group }: { group: BudgetGroupData }) {
       </Pressable>
 
       {/* Nested subcategories */}
-      {expanded && (
+      {expanded && group.children.length > 0 && (
         <View style={styles.children}>
           <View style={styles.line} />
           {group.children.map((c) => (
@@ -54,7 +57,7 @@ export default function BudgetGroup({ group }: { group: BudgetGroupData }) {
                   <Text style={styles.muted}>/ {formatMoney(c.limit)}</Text>
                 </View>
               </View>
-              <ProgressBar value={percent(c.spent, c.limit)} color={colors[c.barColor ?? 'primary']} />
+              <ProgressBar value={percent(c.spent, c.limit)} color={colors.primary} />
             </View>
           ))}
         </View>
