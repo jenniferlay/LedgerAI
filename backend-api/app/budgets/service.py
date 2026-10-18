@@ -376,8 +376,8 @@ async def _enforce_hierarchy(
 			)
 			if siblings + amount > parent_amount:
 				error = (
-				"Subcategory budgets would total {_money(siblings + amount)}, "
-				"which exceeds the parent budget of {_money(parent_amount)}"
+					"Subcategory budgets would total {_money(siblings + amount)}, "
+					"which exceeds the parent budget of {_money(parent_amount)}"
 				)
 
 	# As a parent: the amount must cover the budgets already set on its children.
