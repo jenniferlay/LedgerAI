@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.expenses.routes import router as expenses_router
 from app.plaid.errors import register_plaid_error_handlers
 from app.plaid.router import router as plaid_router
+from app.budgets.routes import router as budgets_router
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(expenses_router)
 app.include_router(plaid_router)
+app.include_router(budgets_router)
 
 
 @app.exception_handler(SQLAlchemyError)

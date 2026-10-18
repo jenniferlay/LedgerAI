@@ -131,9 +131,10 @@ CREATE TABLE plaid_transactions (
     unofficial_currency_code VARCHAR(10),
     raw_data JSONB NOT NULL,
 
-    -- owner is the item's user or 0 (global); same pattern as expenses
-    categoryid BIGINT DEFAULT 1,
-    category_userid BIGINT DEFAULT 0,
+    -- NULL until the categorizer service fills them in (both together).
+    -- Owner is the item's user or 0 (global). NULL rows are excluded from budgets.
+    categoryid BIGINT,
+    category_userid BIGINT,
 
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -151,6 +152,11 @@ CREATE TABLE plaid_transactions (
 
 CREATE INDEX ix_plaid_transactions_item_date
     ON plaid_transactions (plaid_item_id, transaction_date DESC, id DESC);
+
+-- Work queue for the categorizer: small, only holds rows still waiting
+CREATE INDEX ix_plaid_transactions_uncategorized
+    ON plaid_transactions (plaid_item_id, id)
+    WHERE categoryid IS NULL;
 
 -- ===== budgets =====
 
