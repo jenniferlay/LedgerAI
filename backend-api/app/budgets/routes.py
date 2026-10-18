@@ -13,6 +13,7 @@ from app.budgets.schemas import (
 )
 from app.budgets.service import (
 	BudgetExistsError,
+	BudgetHierarchyError,
 	CategoryNotFoundError,
 	create_budget,
 	delete_budget,
@@ -76,6 +77,11 @@ async def post_budget(
 			status_code=status.HTTP_409_CONFLICT,
 			detail="A budget already exists for this category",
 		)
+	except BudgetHierarchyError as exc:
+		raise HTTPException(
+			status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+			detail=str(exc),
+		)
 	return BudgetResponse.model_validate(budget)
 
 
@@ -86,7 +92,13 @@ async def put_budget(
 	current_user: CurrentUser,
 	db: Annotated[AsyncSession, Depends(get_db)],
 ) -> BudgetResponse:
-	updated = await update_budget(db, current_user.userid, budgetid, budget_data)
+	try:
+		updated = await update_budget(db, current_user.userid, budgetid, budget_data)
+	except BudgetHierarchyError as exc:
+		raise HTTPException(
+			status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+			detail=str(exc),
+		)
 	if not updated:
 		raise HTTPException(
 			status_code=status.HTTP_404_NOT_FOUND,

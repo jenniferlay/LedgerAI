@@ -28,6 +28,25 @@ class BudgetResponse(BaseModel):
 	remaining: float  # negative when over budget
 
 
+class SubBudgetResponse(BaseModel):
+	id: int  # categoryid, stable key for lists
+	budgetid: int  # use this for PUT/DELETE /budgets/{budgetid}
+	name: str
+	icon: str | None
+	spent: float
+	limit: float
+
+
+class BudgetGroupResponse(BaseModel):
+	id: int  # categoryid of the top-level category
+	budgetid: int | None  # None when the group is only a container for child budgets
+	name: str
+	icon: str | None
+	spent: float
+	limit: float
+	children: list[SubBudgetResponse]
+
+
 class BudgetSummaryResponse(BaseModel):
 	month: date  # first day of the month
 	total_budget: float
@@ -35,4 +54,4 @@ class BudgetSummaryResponse(BaseModel):
 	total_remaining: float
 	uncategorized_spent: float  # spending with no category yet; not in any budget
 	days_remaining: int
-	budgets: list[BudgetResponse]
+	groups: list[BudgetGroupResponse]

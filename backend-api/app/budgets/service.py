@@ -32,6 +32,10 @@ class BudgetExistsError(Exception):
 	pass
 
 
+class BudgetHierarchyError(Exception):
+	"""Message is safe to show to the user."""
+
+
 def _month_bounds(month: date | None) -> tuple[date, date]:
 	"""First day of the month containing `month` (default: today) and of the next."""
 	start = (month or date.today()).replace(day=1)
@@ -153,6 +157,94 @@ def _to_item(row: Mapping[str, Any]) -> dict[str, Any]:
 	}
 
 
+async def _fetch_parents(
+	db: AsyncSession, category_ids: set[int]
+) -> dict[int, Category]:
+	if not category_ids:
+		return {}
+	# A parent always shares its child's owner, so anyone who can see the child
+	# can see the parent; looking up by primary key is safe.
+	result = await db.scalars(
+		select(Category).where(Category.categoryid.in_(category_ids))
+	)
+	return {category.categoryid: category for category in result.all()}
+
+
+def _build_groups(
+	rows: list[Mapping[str, Any]], parents: dict[int, Category]
+) -> list[dict[str, Any]]:
+	"""Nest budgets: one group per top-level category, subcategory budgets as children.
+
+	A group with its own budget uses that budget's limit/spent (which already include
+	its subcategories). A group without one is only a container, so its limit/spent
+	are the sum of its children.
+	"""
+	groups: dict[int, dict[str, Any]] = {}
+
+	def standalone(row: Mapping[str, Any]) -> dict[str, Any]:
+		return {
+			"id": row["categoryid"],
+			"budgetid": row["budgetid"],
+			"name": row["name"],
+			"icon": row["icon"],
+			"spent": row["spent"],
+			"limit": row["amount"],
+			"children": [],
+		}
+
+	for row in rows:
+		if row["parent_categoryid"] is None:
+			groups[row["categoryid"]] = standalone(row)
+
+	for row in rows:
+		parent_id = row["parent_categoryid"]
+		if parent_id is None:
+			continue
+		if parent_id not in groups:
+			parent = parents.get(parent_id)
+			if parent is None:  # parent vanished: show the budget on its own
+				groups[row["categoryid"]] = standalone(row)
+				continue
+			groups[parent_id] = {
+				"id": parent.categoryid,
+				"budgetid": None,
+				"name": parent.name,
+				"icon": parent.icon,
+				"spent": Decimal(0),
+				"limit": Decimal(0),
+				"children": [],
+			}
+		groups[parent_id]["children"].append(
+			{
+				"id": row["categoryid"],
+				"budgetid": row["budgetid"],
+				"name": row["name"],
+				"icon": row["icon"],
+				"spent": row["spent"],
+				"limit": row["amount"],
+			}
+		)
+
+	for group in groups.values():
+		if group["budgetid"] is None:
+			group["spent"] = sum((c["spent"] for c in group["children"]), Decimal(0))
+			group["limit"] = sum((c["limit"] for c in group["children"]), Decimal(0))
+
+	return sorted(groups.values(), key=lambda g: g["name"])
+
+
+def _group_out(group: dict[str, Any]) -> dict[str, Any]:
+	return {
+		**group,
+		"spent": float(group["spent"]),
+		"limit": float(group["limit"]),
+		"children": [
+			{**c, "spent": float(c["spent"]), "limit": float(c["limit"])}
+			for c in group["children"]
+		],
+	}
+
+
 async def list_budgets(
 	db: AsyncSession, user_id: int, month: date | None = None
 ) -> dict[str, Any]:
@@ -160,12 +252,17 @@ async def list_budgets(
 	rows = await _fetch_budgets(db, user_id, start, end)
 	uncategorized = await _uncategorized_spent(db, user_id, start, end)
 
-	# Totals skip budgets whose parent is also budgeted: the parent's spent
-	# already includes them, so counting both would double count.
-	budgeted_ids = {row["categoryid"] for row in rows}
-	roots = [row for row in rows if row["parent_categoryid"] not in budgeted_ids]
-	total_budget = sum((row["amount"] for row in roots), Decimal(0))
-	total_spent = sum((row["spent"] for row in roots), Decimal(0))
+	top_ids = {r["categoryid"] for r in rows if r["parent_categoryid"] is None}
+	missing = {
+		r["parent_categoryid"] for r in rows if r["parent_categoryid"] is not None
+	} - top_ids
+	parents = await _fetch_parents(db, missing)
+	groups = _build_groups(rows, parents)
+
+	# Each group's limit/spent is exactly what counts toward the totals: children
+	# of a budgeted parent are already inside it, so nothing is double counted.
+	total_budget = sum((g["limit"] for g in groups), Decimal(0))
+	total_spent = sum((g["spent"] for g in groups), Decimal(0))
 
 	today = date.today()
 	days_remaining = (end - today).days if start <= today < end else 0
@@ -177,7 +274,7 @@ async def list_budgets(
 		"total_remaining": float(total_budget - total_spent),
 		"uncategorized_spent": float(uncategorized),
 		"days_remaining": days_remaining,
-		"budgets": [_to_item(row) for row in rows],
+		"groups": [_group_out(g) for g in groups],
 	}
 
 
@@ -210,24 +307,114 @@ async def _uncategorized_spent(
 	return Decimal(total)
 
 
+def _money(value: Decimal) -> str:
+	return f"${value:,.2f}"
+
+
+async def _lock_user_budgets(db: AsyncSession, user_id: int) -> None:
+	"""Serialize budget writes per user until commit/rollback.
+
+	The parent >= children rule spans several rows, so two concurrent requests could
+	each pass the check and together break it. A transaction-scoped advisory lock
+	makes them take turns.
+	"""
+	await db.execute(select(func.pg_advisory_xact_lock(user_id)))
+
+
+async def _children_total(
+	db: AsyncSession,
+	user_id: int,
+	parent_categoryid: int,
+	exclude_budgetid: int | None = None,
+) -> Decimal:
+	statement = (
+		select(func.coalesce(func.sum(Budget.amount), 0))
+		.select_from(Budget)
+		.join(
+			Category,
+			and_(
+				Category.categoryid == Budget.categoryid,
+				Category.userid == Budget.category_userid,
+			),
+		)
+		.where(
+			Budget.userid == user_id,
+			Category.parent_categoryid == parent_categoryid,
+		)
+	)
+	if exclude_budgetid is not None:
+		statement = statement.where(Budget.budgetid != exclude_budgetid)
+	return Decimal(await db.scalar(statement))
+
+
+async def _enforce_hierarchy(
+	db: AsyncSession,
+	user_id: int,
+	category: Category,
+	amount: Decimal,
+	budgetid: int | None = None,
+) -> None:
+	"""A parent's budget must cover the total of its subcategory budgets.
+
+	Call with the user lock held. Rolls back (releasing the lock) before raising.
+	"""
+	error: str | None = None
+
+	# As a child: the new total of siblings (plus this one) must fit in the parent.
+	if category.parent_categoryid is not None:
+		# A parent shares its child's owner, so category.userid is the parent's too.
+		parent_amount = await db.scalar(
+			select(Budget.amount).where(
+				Budget.userid == user_id,
+				Budget.categoryid == category.parent_categoryid,
+				Budget.category_userid == category.userid,
+			)
+		)
+		if parent_amount is not None:
+			siblings = await _children_total(
+				db, user_id, category.parent_categoryid, exclude_budgetid=budgetid
+			)
+			if siblings + amount > parent_amount:
+				error = (
+				"Subcategory budgets would total {_money(siblings + amount)}, "
+				"which exceeds the parent budget of {_money(parent_amount)}"
+				)
+
+	# As a parent: the amount must cover the budgets already set on its children.
+	if error is None:
+		children = await _children_total(db, user_id, category.categoryid)
+		if amount < children:
+			error = (
+				f"Budget must be at least {_money(children)}, "
+				"the total of its subcategory budgets"
+			)
+
+	if error is not None:
+		await db.rollback()
+		raise BudgetHierarchyError(error)
+
+
 async def create_budget(
 	db: AsyncSession, user_id: int, data: BudgetCreate
 ) -> dict[str, Any]:
 	# Only the user's own categories or global ones (userid 0) are allowed.
 	# Compare to None: a global category's userid is 0, which is falsy.
-	category_userid = await db.scalar(
-		select(Category.userid).where(
+	category = await db.scalar(
+		select(Category).where(
 			Category.categoryid == data.categoryid,
 			Category.userid.in_((0, user_id)),
 		)
 	)
-	if category_userid is None:
+	if category is None:
 		raise CategoryNotFoundError
+
+	await _lock_user_budgets(db, user_id)
+	await _enforce_hierarchy(db, user_id, category, data.amount)
 
 	budget = Budget(
 		userid=user_id,
-		categoryid=data.categoryid,
-		category_userid=category_userid,
+		categoryid=category.categoryid,
+		category_userid=category.userid,
 		amount=data.amount,
 	)
 	db.add(budget)
@@ -246,9 +433,19 @@ async def create_budget(
 async def update_budget(
 	db: AsyncSession, user_id: int, budgetid: int, data: BudgetUpdate
 ) -> dict[str, Any] | None:
+	await _lock_user_budgets(db, user_id)
 	budget = await db.get(Budget, budgetid)
 	if not budget or budget.userid != user_id:
+		await db.rollback()
 		return None
+
+	category = await db.scalar(
+		select(Category).where(
+			Category.categoryid == budget.categoryid,
+			Category.userid == budget.category_userid,
+		)
+	)
+	await _enforce_hierarchy(db, user_id, category, data.amount, budgetid)
 
 	budget.amount = data.amount
 	await db.commit()
