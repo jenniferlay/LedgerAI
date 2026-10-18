@@ -40,14 +40,6 @@ class ExpenseFeedItem(BaseModel):
 	description: str
 	categoryid: int | None = None
 
-
-class CategoryResponse(BaseModel):
-	model_config = ConfigDict(from_attributes=True)
-
-	categoryid: int
-	parent_categoryid: int | None
-	name: str
-
 class ExpenseUpdate(BaseModel):
 	model_config = ConfigDict(extra="forbid")
 

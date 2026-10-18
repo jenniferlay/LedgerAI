@@ -15,23 +15,16 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.expenses.models import Category, Expense
+from app.expenses.models import Expense
+from app.category.models import Category
 from app.expenses.schemas import ExpenseCreate
 from app.plaid.models import PlaidItem, PlaidTransaction
+
 
 
 def _escape_like_term(value: str) -> str:
 	return value.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
-
-async def list_categories(db: AsyncSession, user_id: int) -> list[Category]:
-	statement = (
-		select(Category)
-		.where(Category.userid.in_((0, user_id)))
-		.order_by(Category.parent_categoryid, Category.name, Category.categoryid)
-	)
-	result = await db.scalars(statement)
-	return list(result.all())
 
 
 async def create_expense(
@@ -48,6 +41,7 @@ async def create_expense(
 	await db.commit()
 	await db.refresh(expense)
 	return expense
+
 
 
 async def list_expenses(

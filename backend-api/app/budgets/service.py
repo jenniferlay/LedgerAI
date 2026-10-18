@@ -19,7 +19,8 @@ from sqlalchemy.orm import aliased
 
 from app.budgets.models import Budget
 from app.budgets.schemas import BudgetCreate, BudgetUpdate
-from app.expenses.models import Category, Expense
+from app.category.models import Category
+from app.expenses.models import Expense
 from app.plaid.models import PlaidItem, PlaidTransaction
 
 

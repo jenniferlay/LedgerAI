@@ -6,15 +6,16 @@ import pytest
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.expenses.models import Category, Expense
+from app.category.models import Category
+from app.expenses.models import Expense
 from app.expenses.schemas import ExpenseCreate, ExpenseUpdate
 from app.expenses.service import (
 	create_expense,
-	list_categories,
 	list_expense_feed,
 	list_expenses,
 	update_expense_item,
 )
+from app.category.service import list_categories
 from app.plaid.models import PlaidItem, PlaidTransaction
 
 
