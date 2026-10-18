@@ -2,14 +2,16 @@ import React, { useState } from 'react';
 import { Alert } from 'react-native';
 import AddFormLayout from '@/components/shared/AddFormLayout';
 import PrimaryActionButton from '@/components/shared/PrimaryActionButton';
-import { CategoryNameField, IconPreview, ParentCategoryRow } from './CategoryFields';
+import { CategoryNameField, IconPreview } from './CategoryFields';
+import { ParentCategoryDropdown } from './ParentCategoryDropdown';
 import IconGrid from './IconGrid';
-import { PARENT_CATEGORIES, type IconName } from './data';
+import type { IconName } from './data';
+import { createCategory } from '@/services/categories-api';
 
 export interface CategoryDraft {
   name: string;
   icon: IconName;
-  parentCategoryId: string;
+  parentCategoryId: number | null;
 }
 
 interface Props {
@@ -18,12 +20,12 @@ interface Props {
 }
 
 export default function AddCategoryScreen({ onCancel, onDone }: Props) {
-  const [name, setName] = useState('Coffee & Roasts');
+  const [name, setName] = useState('');
   const [icon, setIcon] = useState<IconName>('local-cafe');
+  const [parentCategoryId, setParentCategoryId] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const parent = PARENT_CATEGORIES[0];
-
-  const handleDone = () => {
+  const handleDone = async () => {
     const trimmedName = name.trim();
 
     if (!trimmedName) {
@@ -31,19 +33,37 @@ export default function AddCategoryScreen({ onCancel, onDone }: Props) {
       return;
     }
 
-    if (!onDone) {
-      Alert.alert(
-        'Category not saved',
-        'Category creation is not connected to the backend yet.',
-      );
-      return;
-    }
+    setIsSubmitting(true);
+    try {
+      const created = await createCategory({
+        name: trimmedName,
+        icon,
+        parent_categoryid: parentCategoryId,
+      });
 
-    onDone({
-      name: trimmedName,
-      icon,
-      parentCategoryId: parent.id,
-    });
+      const categoryDraft: CategoryDraft = {
+        name: created.name,
+        icon: (created.icon as IconName) ?? icon,
+        parentCategoryId: created.parent_categoryid,
+      };
+
+      if (onDone) {
+        onDone(categoryDraft);
+      } else {
+        Alert.alert(
+          'Category Created',
+          `Successfully created category "${created.name}".`,
+          [{ text: 'OK', onPress: onCancel }],
+        );
+      }
+    } catch (error) {
+      Alert.alert(
+        'Unable to Create Category',
+        error instanceof Error ? error.message : 'An unexpected error occurred.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -53,13 +73,14 @@ export default function AddCategoryScreen({ onCancel, onDone }: Props) {
     >
       <IconPreview icon={icon} />
       <CategoryNameField value={name} onChangeText={setName} />
-      <ParentCategoryRow parent={parent} />
+      <ParentCategoryDropdown selectedParentId={parentCategoryId} onSelect={setParentCategoryId} />
       <IconGrid selected={icon} onSelect={setIcon} />
       <PrimaryActionButton
         label="Create Category"
         accessibilityLabel="Create Category"
         icon="arrow-forward"
         onPress={handleDone}
+        isLoading={isSubmitting}
       />
     </AddFormLayout>
   );

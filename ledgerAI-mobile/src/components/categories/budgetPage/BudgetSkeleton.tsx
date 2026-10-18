@@ -67,6 +67,11 @@ const { colors, spacing, borderRadius } = theme;
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.surface },
+  groupHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   skeletonTitle: {
     width: 120,
     height: 32,

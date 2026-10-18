@@ -37,7 +37,7 @@ async def create_category(
 		parent = await db.scalar(
 			select(Category).where(
 				Category.categoryid == data.parent_categoryid,
-				Category.userid == user_id,
+				Category.userid.in_((0, user_id)),
 			)
 		)
 		if parent is None:
