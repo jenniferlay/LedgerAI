@@ -7,6 +7,7 @@ import SummaryCard from '@/components/categories/budgetPage/summaryCard';
 import BudgetGroup from '@/components/categories/budgetPage/budgetGroup';
 import BudgetSkeleton from '@/components/categories/budgetPage/BudgetSkeleton';
 import { getBudgetsSummary, BudgetSummary } from '@/services/budgets-api';
+import { useRouter } from 'expo-router';
 
 export default function BudgetsScreen() {
   const insets = useSafeAreaInsets();
@@ -14,6 +15,7 @@ export default function BudgetsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   const fetchBudgets = useCallback(async (isRefresh = false) => {
     try {
@@ -96,7 +98,7 @@ export default function BudgetsScreen() {
         <View style={styles.actions}>
           <Pressable
             style={({ pressed }) => [styles.btn, styles.btnSecondary, pressed && styles.pressed]}
-            onPress={() => {}}
+            onPress={() => {router.push({pathname: "/(app)/(budgets)/add-category"})}}
           >
             <MaterialIcons name="add" size={20} color={colors.primary} />
             <Text style={[styles.btnText, { color: colors.onSurface }]}>Add Category</Text>

@@ -28,7 +28,7 @@ export default function AppLayout() {
       />
 
       <Tabs.Screen
-        name="add-category"
+        name="(marty)"
         options={{
           title: 'Marty',
           tabBarLabel: () => null, 
