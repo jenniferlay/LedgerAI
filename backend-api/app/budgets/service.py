@@ -158,6 +158,7 @@ async def list_budgets(
 ) -> dict[str, Any]:
 	start, end = _month_bounds(month)
 	rows = await _fetch_budgets(db, user_id, start, end)
+	uncategorized = await _uncategorized_spent(db, user_id, start, end)
 
 	# Totals skip budgets whose parent is also budgeted: the parent's spent
 	# already includes them, so counting both would double count.
@@ -174,6 +175,7 @@ async def list_budgets(
 		"total_budget": float(total_budget),
 		"total_spent": float(total_spent),
 		"total_remaining": float(total_budget - total_spent),
+		"uncategorized_spent": float(uncategorized),
 		"days_remaining": days_remaining,
 		"budgets": [_to_item(row) for row in rows],
 	}
@@ -185,6 +187,27 @@ async def _get_budget_item(
 	start, end = _month_bounds(None)
 	rows = await _fetch_budgets(db, user_id, start, end, budgetid=budgetid)
 	return _to_item(rows[0])
+
+
+async def get_budget(
+	db: AsyncSession, user_id: int, budgetid: int, month: date | None = None
+) -> dict[str, Any] | None:
+	start, end = _month_bounds(month)
+	rows = await _fetch_budgets(db, user_id, start, end, budgetid=budgetid)
+	return _to_item(rows[0]) if rows else None
+
+
+async def _uncategorized_spent(
+	db: AsyncSession, user_id: int, start: date, end: date
+) -> Decimal:
+	"""Spending with no category yet (e.g. Plaid rows awaiting the categorizer)."""
+	spend = _spend_subquery(user_id, start, end)
+	total = await db.scalar(
+		select(func.coalesce(func.sum(spend.c.amount), 0)).where(
+			spend.c.categoryid.is_(None)
+		)
+	)
+	return Decimal(total)
 
 
 async def create_budget(

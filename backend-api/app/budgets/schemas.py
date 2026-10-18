@@ -33,5 +33,6 @@ class BudgetSummaryResponse(BaseModel):
 	total_budget: float
 	total_spent: float
 	total_remaining: float
+	uncategorized_spent: float  # spending with no category yet; not in any budget
 	days_remaining: int
 	budgets: list[BudgetResponse]

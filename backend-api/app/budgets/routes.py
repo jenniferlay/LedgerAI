@@ -16,6 +16,7 @@ from app.budgets.service import (
 	CategoryNotFoundError,
 	create_budget,
 	delete_budget,
+	get_budget,
 	list_budgets,
 	update_budget,
 )
@@ -36,6 +37,25 @@ async def get_budgets(
 ) -> BudgetSummaryResponse:
 	summary = await list_budgets(db, current_user.userid, month)
 	return BudgetSummaryResponse.model_validate(summary)
+
+
+@router.get("/{budgetid}", response_model=BudgetResponse)
+async def get_budget_by_id(
+	budgetid: int,
+	current_user: CurrentUser,
+	db: Annotated[AsyncSession, Depends(get_db)],
+	month: Annotated[
+		date | None,
+		Query(description="Any date in the month to report on. Defaults to this month."),
+	] = None,
+) -> BudgetResponse:
+	budget = await get_budget(db, current_user.userid, budgetid, month)
+	if not budget:
+		raise HTTPException(
+			status_code=status.HTTP_404_NOT_FOUND,
+			detail="Budget not found",
+		)
+	return BudgetResponse.model_validate(budget)
 
 
 @router.post("", response_model=BudgetResponse, status_code=status.HTTP_201_CREATED)
