@@ -1,6 +1,6 @@
 # LedgerAI Backend API
 
-This is the backend service for the LedgerAI application. It provides the API layer for the app and is built with FastAPI.
+This is the backend service for the LedgerAI application. It provides the REST API built with FastAPI, SQLAlchemy 2.0 (async), and PostgreSQL.
 
 ## Quick start
 
@@ -11,24 +11,33 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 Copy-Item .env.example .env
-# Set DATABASE_URL in .env to your PostgreSQL connection string.
+# Set DATABASE_URL and JWT_SECRET_KEY in .env
 python main.py
 ```
 
-Run the command from the `backend-api` directory. The app reads its configuration from `.env`. The development entry point binds to `0.0.0.0` on port `8000`, allowing a phone on the same reachable network to connect; use this setup only for development.
+Run the command from the `backend-api` directory. The app reads configuration from `.env`. The development entry point binds to `0.0.0.0` on port `8000`, allowing mobile devices on the same reachable network to connect during development.
 
-Then open:
+Once started, explore the interactive documentation:
 
-- http://localhost:8000
-- http://localhost:8000/docs
+- **Swagger UI:** http://localhost:8000/docs
+- **ReDoc:** http://localhost:8000/redoc
+- **Health check:** http://localhost:8000/
 
-## Tests
+## Testing
 
-From the `backend-api` directory, install the development dependencies and run the unit tests:
+From the `backend-api` directory, install the development dependencies and run tests:
 
 ```powershell
 pip install -r requirements-dev.txt
 python -m pytest
+```
+
+To run a specific test suite:
+
+```powershell
+python -m pytest tests/unit/auth
+python -m pytest tests/unit/expenses
+python -m pytest tests/unit/plaid
 ```
 
 ## Project structure
@@ -36,66 +45,76 @@ python -m pytest
 ```text
 backend-api/
 ├── app/
-│   ├── db/
-│   │   ├── __init__.py
-│   │   ├── base.py
-│   │   └── database.py
-│   ├── auth/
-│   │   ├── models.py
-│   │   ├── routes.py
-│   │   ├── schemas.py
-│   │   └── security.py
-│   └── expenses/
-│       ├── models.py
-│       ├── routes.py
-│       ├── schemas.py
-│       └── service.py
+│   ├── auth/         # User authentication, registration, JWT & Argon2 security
+│   ├── budgets/      # Category budget limits, tracking & monthly summaries
+│   ├── category/     # Hierarchical categories & Material icon validation
+│   ├── core/         # Settings & environment configuration
+│   ├── db/           # Async SQLAlchemy database engine & base model
+│   ├── expenses/     # Expense CRUD & combined manual/Plaid transaction feed
+│   └── plaid/        # Plaid Link, token exchange, transaction sync & webhooks
+├── db-schemas/       # PostgreSQL DDL scripts (setup.sql, users.sql, etc.)
 ├── tests/
-│   └── unit/
-│       └── expenses/
-│           └── test_service.py
-├── main.py
-├── pytest.ini
-├── requirements-dev.txt
-├── sql/
-│   └── users.sql
-├── .env.example
-├── .venv/
-├── requirements.txt
-└── README.md
+│   └── unit/         # Unit test suites (auth, expenses, plaid)
+├── .env.example      # Example environment configuration
+├── main.py           # Application entry point & router registration
+├── pytest.ini        # Pytest configuration
+├── requirements.txt  # Production dependencies
+└── requirements-dev.txt # Development and test dependencies
 ```
 
-## Database connections
+## Database setup
 
-- `app.db.database` creates an asynchronous SQLAlchemy engine and `SessionLocal` from `DATABASE_URL`, using asyncpg.
-- Plain PostgreSQL URLs are configured to require SSL. Existing `sslmode` query settings are translated to asyncpg's `ssl` option.
-- Inject a request-scoped session into route handlers with `from app.db.database import get_db` and `db: AsyncSession = Depends(get_db)`.
-- The `get_db` dependency always closes its session, including when a request fails. Commit or roll back explicitly in the service or route that owns each transaction.
-- `Base` in `app.db.base` is the shared declarative base for ORM models. Apply schema changes through migrations or reviewed SQL scripts; the API does not create or alter tables at startup.
-- Run `sql/users.sql`, then `sql/category.sql`, then `sql/expense.sql`. Expenses store both the category ID and its owner ID; the composite foreign key ensures that the category is global or belongs to the expense owner, including for direct SQL writes.
-- Keep `.env` out of version control. `.env.example` contains only a placeholder.
+Database schema scripts are located in `db-schemas/`. The API does not create or alter tables automatically at startup.
 
-## Authentication
+- To initialize a fresh database with all tables, constraints, and default categories, execute `db-schemas/setup.sql`:
+  ```powershell
+  psql -d <your_database> -f db-schemas/setup.sql
+  ```
+  *(Note: `setup.sql` recreates all tables and resets data).*
+- Individual component schemas:
+  - `db-schemas/users.sql`: User accounts and credentials.
+  - `db-schemas/categories.sql`: Category hierarchy with system-level and user-level ownership.
+  - `db-schemas/expense.sql`: Manual expense records with category foreign keys.
+  - `db-schemas/plaid.sql`: Plaid linked items and synced transactions.
+  - `db-schemas/budgets.sql`: Monthly category budget thresholds.
 
-- `POST /auth/signup` accepts JSON with an `email`, `username`, and `password`. Passwords must be at least 8 characters and contain uppercase and lowercase letters and a number.
-- `POST /auth/login` accepts JSON with an `email` and `password`, checks the user against the existing `users` table, and returns a 7-day HS256 bearer token.
-- For development, CORS allows all origins by default so Expo Go on a phone can reach the API. Set `CORS_ORIGINS` to a comma-separated list of trusted origins to restrict browser access when deploying. Credentials remain disabled.
-- `POST /expenses` accepts JSON expense details and requires a bearer token. The expense owner is taken from the verified token; clients must not provide a user ID. If `categoryid` is omitted, it defaults to `1` (the system-wide General category). The API only accepts global or caller-owned categories, and the composite foreign key enforces the same ownership rule for direct SQL writes.
-- `GET /expenses` requires a bearer token and returns a newest-first feed of the caller's manual expenses and synced Plaid transactions. Each item has a `source` discriminator, stable database `id`, amount, date, merchant, and description; manual items include `categoryid`, while Plaid items include `transaction_id`, `account_id`, `pending`, and currency. Optional `start_date` and `end_date` filters are inclusive; `categoryid` filters manual expenses; `merchant` performs a case-insensitive substring search; `limit` (default `100`, maximum `500`) and `offset` paginate the combined feed.
-- `GET /expenses/categories` requires a bearer token and returns global and caller-owned categories with IDs and parent IDs.
-- `POST /plaid/link-token` requires a bearer token and creates a Plaid Link token for the authenticated user. Configure `PLAID_CLIENT_ID`, `PLAID_SECRET`, and `PLAID_ENV=sandbox` in `.env`; no Plaid credentials are required until a Plaid endpoint is used.
-- `POST /plaid/exchange` requires a bearer token and accepts `{"public_token":"..."}` from Plaid Link. It stores the resulting item, immediately runs its initial transaction sync, and returns the `item_id` plus a `sync_summary`. If the initial sync fails, the item is still linked and the response includes a failed sync status so the client can retry using the manual sync endpoint.
-- `POST /plaid/items/{item_id}/sync` requires a bearer token and imports the item's transaction changes. The response includes transaction added, updated, and removed counts; a `requires_reauth` status means the client should request an Update Mode link token from `POST /plaid/items/{item_id}/update-link-token`.
-- `POST /plaid/webhooks` accepts Plaid `TRANSACTIONS` / `SYNC_UPDATES_AVAILABLE` notifications, verifies the `Plaid-Verification` JWT signature and request-body hash, and syncs only items already stored by the backend. Configure Plaid to use this endpoint as the webhook URL.
-- Plaid is configured for sandbox only. The server uses the official `plaid-python` SDK and does not log public tokens, access tokens, or full Plaid responses.
-- Apply `db-schemas/plaid_items.sql` after `db-schemas/users.sql` to create the Plaid item and transaction tables and to add the sync and re-auth state columns. Existing databases can apply the same script to add the new columns and table. `PLAID_ACCESS_TOKEN_ENCRYPTION_KEY` is required to exchange and sync tokens; generate it with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` and store the output in `.env`. Keep this key secret and stable: changing it makes previously stored access tokens unreadable. Access tokens are encrypted before storage and are not returned to clients.
-- Passwords in `users.password_hash` must use the Argon2 format supported by `pwdlib`.
-- Set `JWT_SECRET_KEY` to a long, random secret in `.env`; never use an example placeholder in a deployed environment.
-- Run `sql/users.sql` against PostgreSQL before using the login route.
+### Connections and ORM
+- `app.db.database` configures an asynchronous SQLAlchemy engine and session factory (`SessionLocal`) using `asyncpg`.
+- PostgreSQL URLs are automatically adapted for `asyncpg` with SSL negotiation.
+- Inject database sessions into FastAPI routes using `from app.db.database import get_db` and `db: AsyncSession = Depends(get_db)`.
+- Passwords stored in `users.password_hash` use the Argon2 format managed by `pwdlib`.
 
-To run the Plaid route tests from `backend-api`, use `python -m pytest tests/unit/plaid`.
+## API modules & endpoints
 
-## Notes
+### Authentication (`/auth`)
+- `POST /auth/signup` - Register a new account (`username`, `email`, `password`). Requires minimum 8 characters with lowercase, uppercase, and numbers.
+- `POST /auth/login` - Authenticate with email and password; returns an HS256 JWT bearer token valid for 7 days.
 
-- The API exposes a health-check endpoint at `/` and authentication endpoints at `/auth/signup` and `/auth/login`.
-- The app is configured to run with FastAPI and reload during development.
+### Expenses (`/expenses`)
+- `POST /expenses` - Create a manual expense (`amount_dollars`, `amount_cents`, `note`, `spent_on`, `merchant`, `categoryid`).
+- `GET /expenses` - Combined feed of manual expenses and Plaid-synced transactions. Supports filtering by `start_date`, `end_date`, `categoryid`, `merchant`, `limit` (max 500), and `offset`.
+- `PUT /expenses/{source}/{item_id}` - Update a manual or Plaid transaction (note, amount, merchant, spent_on, categoryid).
+- `DELETE /expenses/{source}/{item_id}` - Delete a manual expense or Plaid transaction item.
+
+### Categories (`/categories`)
+- `GET /categories` - List all system global categories and user-created custom categories with hierarchical parent relationships.
+- `POST /categories` - Create a custom category (`name`, optional `parent_categoryid`, optional Material icon). Subcategories can only be nested one level deep.
+
+### Budgets (`/budgets`)
+- `GET /budgets` - Get monthly budget summaries, total budget, spent amount, remaining balance, and breakdown per category group. Accepts optional `month=YYYY-MM-DD`.
+- `POST /budgets` - Create or assign a monthly budget limit to a category.
+- `GET /budgets/{budgetid}` - Fetch details and progress for a single budget.
+- `PUT /budgets/{budgetid}` - Update budget limit amount.
+- `DELETE /budgets/{budgetid}` - Remove a budget allocation.
+
+### Plaid integration (`/plaid`)
+- `POST /plaid/link-token` - Generate a Plaid Link token for bank connection.
+- `POST /plaid/exchange` - Exchange `public_token` from Plaid Link for an encrypted access token and kick off initial transaction sync.
+- `POST /plaid/items/{item_id}/sync` - Manually sync latest transactions for a linked institution.
+- `POST /plaid/items/{item_id}/update-link-token` - Generate an update-mode Link token when re-authentication is required.
+- `POST /plaid/webhooks` - Webhook receiver for Plaid `TRANSACTIONS` updates with JWT signature verification.
+- Plaid access tokens are encrypted at rest using Fernet encryption (`PLAID_ACCESS_TOKEN_ENCRYPTION_KEY`). Generate one with:
+  ```powershell
+  python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+  ```
+

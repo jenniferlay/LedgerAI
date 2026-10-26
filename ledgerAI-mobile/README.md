@@ -1,107 +1,105 @@
-# Welcome to your Expo app 👋
+# LedgerAI Mobile Application
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+The frontend client for LedgerAI, built with **React Native**, **Expo SDK 54+**, and **Expo Router**. Provides expense tracking, category budgeting, Plaid bank synchronization, and conversational financial assistance on iOS, Android, and Web.
 
-## Get started
+## Features
 
-1. Install dependencies
+- **Authentication:** Secure signup, login, and bearer token storage using `expo-secure-store`.
+- **Dashboard & Spending Feed:** View recent activity, net worth cards, and combined manual/Plaid transactions.
+- **Budget Tracking:** Category budget progress bars, category breakdown summaries, and custom category management.
+- **Plaid Link:** Connect bank accounts securely in sandbox mode via `react-native-plaid-link-sdk`.
+- **Marty (AI Advisor):** Direct tab access to the AI financial assistant.
+
+## Quick start
+
+From the `ledgerAI-mobile` directory:
+
+1. Install dependencies:
 
    ```bash
    npm install
    ```
 
-2. Start the app
+2. Configure environment:
+
+   Copy `.env.example` to `.env` and set `EXPO_PUBLIC_API_URL` to your backend base URL:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   - **Web / iOS Simulator:** `http://localhost:8000`
+   - **Android Emulator:** `http://10.0.2.2:8000`
+   - **Physical Device:** `http://<YOUR_COMPUTER_LAN_IP>:8000` (e.g. `http://192.168.1.50:8000`)
+
+3. Start the development server:
 
    ```bash
    npx expo start
    ```
 
-## Backend authentication
+## Development and builds
 
-Copy `.env.example` to `.env` and set `EXPO_PUBLIC_API_URL` to the backend base URL.
-Use `http://localhost:8000` for web or an iOS simulator, `http://10.0.2.2:8000`
-for an Android emulator, or the computer's reachable LAN address for a physical
-device. Restart Expo after changing the value.
+### Running in Expo Go vs. Native Development Builds
 
-For Expo Go on a physical phone, use the computer's LAN IP (for example,
-`http://192.168.1.25:8000`) and start the backend with
-`python main.py` from the `backend-api` directory. Keep the phone and computer
-on a network that allows them to reach each other; CORS settings do not make a
-server reachable over the network.
-
-The backend must be running with its database configured and the users table
-created. Signup creates the account and then signs in; both signup and login
-persist the backend-issued access token for authenticated app requests.
-
-## Plaid Link sandbox
-
-The authenticated home screen's **Connect bank** button requests a fresh Link
-token from `POST /plaid/link-token` each time it is pressed, opens Plaid Link,
-and sends the returned public token to `POST /plaid/exchange`. The app never
-stores or logs the public token or the resulting access token.
-
-Install the native SDK dependency with:
+- Standard screens and features run in **Expo Go**.
+- **Plaid Link** requires native code (`react-native-plaid-link-sdk`) and **cannot run inside Expo Go**. To test bank linking, use an Expo development build:
 
 ```bash
-npm install
+# Prebuild native directories
 npx expo prebuild
+
+# Run locally on iOS (macOS with Xcode required)
+npx expo run:ios
+
+# Run locally on Android (Android Studio / SDK required)
+npx expo run:android
 ```
 
-Plaid Link uses native code and does not run in Expo Go. Use a development
-build:
-
-- **iOS:** On macOS with Xcode installed, run `npx pod-install`, then
-  `npx expo run:ios` (or build an EAS development client). SDK 12 requires
-  iOS 14 or newer.
-- **Android:** Install Android Studio with Android SDK Platform 34, then run
-  `npx expo run:android` to build and launch the native app. SDK 12 supports
-  Android API 21 and newer; its native module compiles against API 34.
-  React Native autolinking handles the native module; no manual Gradle
-  registration is needed. To use Android OAuth institutions, set a stable
-  `android.package` in `app.json` and register that exact package name in the
-  Plaid Dashboard.
-
-Start the backend and configure `EXPO_PUBLIC_API_URL` as described above.
-Sign in, choose **Connect bank**, and use Plaid sandbox credentials
-`user_good` / `pass_good` in the Link UI. If Plaid Link does not open, confirm
-you launched the native development build rather than Expo Go; the app will
-also show an error when the Plaid native module is unavailable.
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+Or build with EAS:
 
 ```bash
-npm run reset-project
+npx eas-cli build --profile development --platform android
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Plaid sandbox credentials
 
-### Other setup steps
+When linking a bank in sandbox mode:
+- **Username:** `user_good`
+- **Password:** `pass_good`
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## Available scripts
 
-## Learn more
+- `npm run start` - Start Expo development server (`npx expo start`)
+- `npm run android` - Start and target Android device/emulator
+- `npm run ios` - Start and target iOS simulator
+- `npm run web` - Start web development preview
+- `npm run lint` - Run ESLint checks (`npx expo lint`)
+- `npx tsc --noEmit` - Type-check TypeScript files
 
-To learn more about developing your project with Expo, look at the following resources:
+## Project structure
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```text
+ledgerAI-mobile/
+├── src/
+│   ├── app/                  # Expo Router file-based screens
+│   │   ├── _layout.tsx       # Root layout & providers
+│   │   ├── (auth)/           # Authentication screens (login, signup)
+│   │   └── (app)/            # Authenticated tab navigation
+│   │       ├── (home)/       # Home dashboard, expense feeds & edit screen
+│   │       ├── (budgets)/    # Budget overview & category management
+│   │       ├── (marty)/      # AI Advisor tab
+│   │       └── add-expense.tsx # Modal / screen for manual expense entry
+│   ├── components/           # Reusable UI cards, forms & themed widgets
+│   ├── constants/            # Theme tokens, spacing, colors & typography
+│   ├── context/              # Authentication context & secure token storage
+│   ├── hooks/                # Custom React hooks (theme, color scheme)
+│   ├── services/             # Typed API clients (auth, expenses, budgets, categories, plaid)
+│   └── types/                # Global type definitions
+├── assets/                   # App icons, splash screens, logos & graphics
+├── app.json                  # Expo application configuration & plugins
+├── eas.json                  # EAS Build & Submit configuration
+├── package.json              # Dependencies and scripts
+└── tsconfig.json             # TypeScript compiler settings
+```
 
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
