@@ -7,14 +7,23 @@ def parse_args() -> argparse.Namespace:
   parser.add_argument(
     "--voice",
     action="store_true",
-    help="Use the realtime voice interface instead of the text interface.",
+    help="Use the voice interface instead of the text interface.",
+  )
+  parser.add_argument(
+    "--nomodal",
+    action="store_true",
+    help="Use the non-multimodal voice pipeline (Deepgram STT -> Marty Agent -> Deepgram TTS).",
   )
   return parser.parse_args()
 
 
 def main() -> None:
   args = parse_args()
-  if args.voice:
+  if args.nomodal:
+    from conversational_agent.nomodal_voice import run_nomodal_voice
+
+    asyncio.run(run_nomodal_voice())
+  elif args.voice:
     from conversational_agent.voice import run_voice
 
     asyncio.run(run_voice())

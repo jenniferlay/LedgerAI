@@ -1,21 +1,30 @@
 # LedgerAI Conversational Agent
 
-A voice- and text-capable AI financial advisor named **Marty**, powered by Pydantic AI and Google Gemini models. The agent connects to the LedgerAI backend API to inspect spending and financial categories for the authenticated user.
+A voice- and text-capable AI financial advisor named **Marty**, powered by Pydantic AI, Google Gemini, and Deepgram. The agent connects to the LedgerAI backend API to inspect spending, accounts, net worth, and monthly budgets for the authenticated user.
 
 ## Features
 
-- **Text & Realtime Voice:** Interactive CLI text chat or low-latency streaming voice chat using PyAudio and Gemini Live.
-- **Read-Only Spending Intelligence:** Integrates with the LedgerAI backend `GET /expenses` feed and `GET /expenses/categories` endpoints using the user's bearer token.
-- **Scoped Context:** Preloads current month dates and active categories so Marty understands the user's budget and category hierarchy without hallucinating.
+- **Text & Voice Options:**
+  - Interactive CLI text chat (`python main.py`).
+  - Low-latency end-to-end multimodal speech-to-speech (`python main.py --voice`).
+  - **Non-multimodal pipeline (`python main.py --voice --nomodal`):** Deepgram Nova-2 (STT) + Marty Agent (Gemini Flash) + Deepgram Aura (TTS) for ultra-low latency, natural conversational audio, and fractions of a cent per turn.
+- **Read-Only Financial Intelligence:** Integrates with LedgerAI backend endpoints:
+  - `GET /expenses` (Spending feed)
+  - `GET /categories` (Category hierarchy)
+  - `GET /plaid/accounts` (Bank & credit accounts)
+  - `GET /plaid/accounts/net-worth` (Real-time net worth)
+  - `GET /budgets` (Monthly category limits & rollups)
 
 ## Prerequisites
 
 - Python 3.11+
-- Working microphone and speaker setup (for `--voice` mode)
+- Working microphone and speaker setup (for voice modes)
 - Backend API running (default: `http://127.0.0.1:8000`)
-- A valid Gemini API key (`GEMINI_API_KEY`)
+- Valid API keys:
+  - `GEMINI_API_KEY` (for Gemini reasoning and Gemini Live)
+  - `DEEPGRAM_API_KEY` (for `--nomodal` voice mode)
 
-## Quick start
+## Quick Start
 
 From the `conversational-agent` directory:
 
@@ -25,28 +34,35 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-Create a `.env` file in `conversational-agent/`:
+Create a `.env` file in `conversational-agent/` (refer to `.env.example`):
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key_here
+REALTIME_MODEL=google:gemini-3.8-live
+TEXT_MODEL=google:gemini-3.8-flash
+
+# Deepgram (for --nomodal mode)
+DEEPGRAM_API_KEY=your_deepgram_api_key_here
+
 API_BASE_URL=http://127.0.0.1:8000
 ```
 
 ### Running the Agent
 
-Start the text interface:
+1. **Text Interface (100% Free / Instant):**
+   ```powershell
+   python main.py
+   ```
 
-```powershell
-python main.py
-```
+2. **Non-Multimodal Voice (Deepgram STT -> Marty -> Deepgram TTS):**
+   ```powershell
+   python main.py --voice --nomodal
+   ```
 
-Start the realtime voice interface:
-
-```powershell
-python main.py --voice
-```
-
-On startup, you will be prompted securely for your LedgerAI user access token (obtained via the mobile app or backend `/auth/login`). The token is used in memory for read-only expense queries and is never logged or exposed.
+3. **Multimodal Realtime Voice (Gemini Live / OpenAI Realtime):**
+   ```powershell
+   python main.py --voice
+   ```
 
 ## Project Structure
 
@@ -54,10 +70,11 @@ On startup, you will be prompted securely for your LedgerAI user access token (o
 conversational-agent/
 ├── conversational_agent/
 │   ├── __init__.py
-│   ├── agent.py      # Pydantic AI agent, tool definitions, & context builder
-│   ├── cli.py        # Interactive text conversation loop
-│   └── voice.py      # Streaming audio I/O & Gemini Live session
-├── main.py           # CLI entry point (supports --voice)
-├── requirements.txt  # Dependencies (Pydantic AI, Gemini SDK, PyAudio, httpx, etc.)
+│   ├── agent.py          # Pydantic AI agent, tool definitions, & context builder
+│   ├── cli.py            # Interactive text conversation loop
+│   ├── nomodal_voice.py  # Deepgram STT -> Marty Agent -> Deepgram Aura TTS pipeline
+│   └── voice.py          # Realtime multimodal speech-to-speech session
+├── main.py               # CLI entry point (--voice, --nomodal)
+├── requirements.txt      # Dependencies
 └── README.md
 ```
