@@ -54,30 +54,34 @@ def _expense_amount():
 
 
 def _spend_subquery(user_id: int, start: date, end: date):
-	"""All of the user's spending in [start, end) from both sources."""
+	"""All of the user's spending in [start, end) from both sources.
+
+	Negative amounts are money out. They're flipped so spend comes out positive.
+	"""
+	manual_amount = _expense_amount()
 	manual = select(
 		Expense.categoryid.label("categoryid"),
 		Expense.category_userid.label("category_userid"),
-		_expense_amount().label("amount"),
+		(-manual_amount).label("amount"),
 	).where(
 		Expense.userid == user_id,
 		Expense.spent_on >= start,
 		Expense.spent_on < end,
+		manual_amount < 0,
 	)
 
-	# Plaid: positive = money out (negatives are mostly income, so skipped);
-	# pending rows are skipped because they re-post as new rows.
+	# Pending rows are skipped because they re-post as new rows.
 	plaid = (
 		select(
 			PlaidTransaction.categoryid.label("categoryid"),
 			PlaidTransaction.category_userid.label("category_userid"),
-			PlaidTransaction.amount.label("amount"),
+			(-PlaidTransaction.amount).label("amount"),
 		)
 		.join(PlaidItem, PlaidTransaction.plaid_item_id == PlaidItem.id)
 		.where(
 			PlaidItem.user_id == user_id,
 			PlaidTransaction.pending.is_(False),
-			PlaidTransaction.amount > 0,
+			PlaidTransaction.amount < 0,
 			PlaidTransaction.transaction_date >= start,
 			PlaidTransaction.transaction_date < end,
 		)

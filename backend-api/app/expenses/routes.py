@@ -93,7 +93,7 @@ async def update_expense(
 	return ExpenseFeedItem.model_validate(updated)
 
 
-@router.delete("/{source}/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{source}/{item_id}", status_code=status.HTTP_200_OK)
 async def delete_expense(
 	source: str,
 	item_id: int,
@@ -112,6 +112,6 @@ async def delete_expense(
 			status_code=status.HTTP_404_NOT_FOUND,
 			detail="Expense item not found",
 		)
-	return None
+	return DeleteResponse(message="Expense item deleted successfully")
 
 

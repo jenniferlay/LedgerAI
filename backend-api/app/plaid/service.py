@@ -283,7 +283,7 @@ def _transaction_values(transaction: Any) -> dict[str, Any]:
     "pending_transaction_id": _transaction_value(
       transaction, "pending_transaction_id"
     ),
-    "amount": Decimal(str(_transaction_value(transaction, "amount"))),
+    "amount": -Decimal(str(_transaction_value(transaction, "amount"))),
     "transaction_date": _transaction_date(
       _transaction_value(transaction, "date")
     ),
