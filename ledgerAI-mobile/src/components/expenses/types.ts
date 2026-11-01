@@ -9,6 +9,8 @@ export interface ExpenseCategoryOption {
   id: number;
   name: string;
   icon: IconName;
+  parentId?: number | null;
+  parentName?: string | null;
 }
 
 export interface ExpenseFormValues {

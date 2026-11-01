@@ -9,29 +9,40 @@ export const FORM_HEADER_HEIGHT = 56;
 interface Props {
   title: string;
   onCancel?: () => void;
+  /** Override the cancel button label (default "Cancel"). */
+  cancelLabel?: string;
+  /** Override the cancel button icon (default "close"). */
+  cancelIcon?: keyof typeof MaterialIcons.glyphMap;
   onDelete?: () => void;
   isDeleting?: boolean;
 }
 
-export default function FormHeader({ title, onCancel, onDelete, isDeleting }: Props) {
+export default function FormHeader({
+  title,
+  onCancel,
+  cancelLabel = 'Cancel',
+  cancelIcon = 'close',
+  onDelete,
+  isDeleting,
+}: Props) {
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.bar}>
         <Pressable
-          accessibilityLabel="Cancel"
+          accessibilityLabel={cancelLabel}
           accessibilityRole="button"
           onPress={onCancel}
           style={({ pressed }) => [styles.cancel, pressed && { opacity: 0.7 }]}
         >
           <MaterialIcons
-            name="close"
+            name={cancelIcon}
             size={20}
             color={colors.onSurfaceVariant}
             style={styles.cancelIcon}
           />
-          <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={styles.cancelText}>{cancelLabel}</Text>
         </Pressable>
 
         {onDelete && (

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
 import { spacing } from '@/constants/theme';
 import { createExpense } from '@/services/expenses-api';
@@ -27,24 +27,35 @@ import type {
 } from '../types';
 
 interface Props {
+  /**
+   * Called when the user dismisses the screen (modal / pushed route).
+   * When undefined the header button acts as "Clear" instead of "Cancel".
+   */
   onCancel?: () => void;
   onDone?: (expense: ExpensePayload) => void;
 }
+
+const INITIAL_VALUES: ExpenseFormValues = {
+  type: 'expense',
+  amount: '',
+  merchant: '',
+  note: '',
+  spentOn: getTodayIsoDate(),
+  categoryId: null,
+};
 
 export default function AddExpenseScreen({
   onCancel,
   onDone,
 }: Props) {
-  const [values, setValues] = useState<ExpenseFormValues>({
-    type: 'expense',
-    amount: '',
-    merchant: '',
-    note: '',
-    spentOn: getTodayIsoDate(),
-    categoryId: null,
-  });
+  const [values, setValues] = useState<ExpenseFormValues>({ ...INITIAL_VALUES });
   const [errors, setErrors] = useState<ExpenseFormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const resetForm = useCallback(() => {
+    setValues({ ...INITIAL_VALUES, spentOn: getTodayIsoDate() });
+    setErrors({});
+  }, []);
 
   const setFieldValue = <K extends keyof ExpenseFormValues>(
     field: K,
@@ -86,11 +97,11 @@ export default function AddExpenseScreen({
       if (onDone) {
         onDone(result.payload);
       } else {
-        const formattedAmount = `$${Math.abs(result.payload.amount).toFixed(2)}`;
+        const formattedAmount = '$' + Math.abs(result.payload.amount).toFixed(2);
         Alert.alert(
           'Expense Saved',
-          `Successfully saved expense of ${formattedAmount} for "${result.payload.note}".`,
-          [{ text: 'OK', onPress: onCancel }],
+          'Successfully saved expense of ' + formattedAmount + ' for "' + result.payload.note + '".',
+          [{ text: 'OK', onPress: resetForm }],
         );
       }
     } catch (error) {
@@ -103,10 +114,15 @@ export default function AddExpenseScreen({
     }
   };
 
+  // When no onCancel is provided this is a tab — show "Clear" instead of "Cancel"
+  const isTab = !onCancel;
+
   return (
     <AddFormLayout
       title={values.type === 'income' ? 'Log Income' : 'Log Expense'}
-      onCancel={onCancel}
+      onCancel={isTab ? resetForm : onCancel}
+      cancelLabel={isTab ? 'Clear' : undefined}
+      cancelIcon={isTab ? 'refresh' : undefined}
       contentTopSpacing={spacing.sm}
     >
       <ExpenseTypeToggle
