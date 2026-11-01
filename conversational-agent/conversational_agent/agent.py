@@ -104,8 +104,16 @@ def financial_context(categories: list[CategoryRecord]) -> str:
   )
 
 
+text_model_name = os.getenv("TEXT_MODEL")
+if not text_model_name:
+  raise ValueError(
+    "TEXT_MODEL is not set in your .env file. "
+    "Please set TEXT_MODEL in conversational-agent/.env "
+    "(e.g. TEXT_MODEL=google:gemini-3.8-flash or TEXT_MODEL=openai:gpt-4o-mini)."
+  )
+
 advisor_agent = Agent(
-  "google:gemini-3.1-flash-lite",
+  text_model_name,
   deps_type=AgentDeps,
   system_prompt=(
     "Your name is Marty. If asked who you are, always introduce yourself as Marty. "

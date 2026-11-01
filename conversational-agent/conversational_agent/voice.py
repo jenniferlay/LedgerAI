@@ -1,6 +1,8 @@
 import asyncio
+import os
 
 import pyaudio
+from pydantic_ai.realtime import infer_realtime_model
 from pydantic_ai.usage import UsageLimits
 
 from conversational_agent.agent import advisor_agent, financial_context, get_agent_deps
@@ -11,8 +13,19 @@ async def run_voice() -> None:
   safety_limits = UsageLimits(request_limit=20, total_tokens_limit=8000)
   deps = await get_agent_deps()
 
+  model_name = os.getenv("REALTIME_MODEL")
+  if not model_name:
+    raise ValueError(
+      "REALTIME_MODEL is not set in your .env file. "
+      "Please set REALTIME_MODEL in conversational-agent/.env "
+      "(e.g. REALTIME_MODEL=google:gemini-3.8-live or REALTIME_MODEL=openai:gpt-4o-mini-realtime-preview)."
+    )
+  realtime_model = infer_realtime_model(model_name)
+  in_sample_rate = realtime_model.profile.get("audio_input_sample_rate", 16000)
+  out_sample_rate = realtime_model.profile.get("audio_output_sample_rate", 24000)
+
   realtime_advisor = advisor_agent.realtime(
-    "google:gemini-3.8-live",
+    model_name,
     deps=deps,
     usage_limits=safety_limits,
     instructions=(
@@ -25,13 +38,13 @@ async def run_voice() -> None:
   )
 
   async with realtime_advisor.session(handle_barge_in=True) as session:
-    print("🎙️ Speak to Marty! (Ctrl+C to quit)")
+    print(f"🎙️ Speak to Marty ({model_name})! (Ctrl+C to quit)")
 
     async def send_mic_audio() -> None:
       mic = pya.open(
         format=pyaudio.paInt16,
         channels=1,
-        rate=16000,
+        rate=in_sample_rate,
         input=True,
         frames_per_buffer=1024,
       )
@@ -43,7 +56,7 @@ async def run_voice() -> None:
       speaker = pya.open(
         format=pyaudio.paInt16,
         channels=1,
-        rate=24000,
+        rate=out_sample_rate,
         output=True,
       )
       async for audio_chunk in session.stream_audio():
