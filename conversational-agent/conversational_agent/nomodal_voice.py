@@ -9,7 +9,6 @@ import websockets
 from pydantic_ai.usage import UsageLimits
 
 from conversational_agent.agent import advisor_agent, get_agent_deps
-from conversational_agent.speech_sanitizer import clean_for_speech
 
 
 async def run_nomodal_voice() -> None:
@@ -127,11 +126,11 @@ async def run_nomodal_voice() -> None:
               message_history=history,
               usage_limits=safety_limits,
             )
-            clean_response = clean_for_speech(result.output)
-            print(f"Marty: {clean_response}\n")
+            response_text = result.output
+            print(f"Marty: {response_text}\n")
             history = result.all_messages()
 
-            await speak_tts(clean_response, http_client, api_key, tts_model, speaker_stream)
+            await speak_tts(response_text, http_client, api_key, tts_model, speaker_stream)
           except Exception as exc:
             print(f"Error processing response: {exc}")
           finally:
