@@ -6,6 +6,13 @@ import { AuthProvider, useAuth } from '@/context/auth';
 
 void SplashScreen.preventAutoHideAsync();
 
+export const unstable_settings = {
+  initialRouteName: '(app)',
+  '(app)': {
+    initialRouteName: '(home)',
+  },
+};
+
 function RootNavigator() {
   const colorScheme = useColorScheme();
   const { isLoggedIn, authError } = useAuth();

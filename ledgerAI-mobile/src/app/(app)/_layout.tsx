@@ -2,6 +2,10 @@ import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme, View } from 'react-native';
 
+export const unstable_settings = {
+  initialRouteName: '(home)',
+};
+
 export default function AppLayout() {
   const colorScheme = useColorScheme();
   const activeColor = colorScheme === 'dark' ? '#fff' : '#000';
@@ -10,6 +14,7 @@ export default function AppLayout() {
 
   return (
     <Tabs
+      initialRouteName="(home)"
       screenOptions={{
         headerShown: false, 
         tabBarActiveTintColor: activeColor,
