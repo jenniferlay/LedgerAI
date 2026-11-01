@@ -96,6 +96,7 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '700',
     marginRight: 6,
+    lineHeight: undefined,
   },
   currencyPrefixIncome: {
     color: colors.primary,
@@ -108,8 +109,11 @@ const styles = StyleSheet.create({
     flex: 1,
     color: colors.onSurface,
     fontWeight: '700',
-    padding: 0,
+    paddingVertical: 0,
     margin: 0,
+    lineHeight: undefined,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
   errorText: {
     ...typography.bodySm,

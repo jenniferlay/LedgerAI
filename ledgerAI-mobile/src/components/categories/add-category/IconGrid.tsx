@@ -137,11 +137,12 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    height: '100%',
     fontSize: 15,
     color: colors.onSurfaceVariant,
+    paddingVertical: 0,
+    margin: 0,
     textAlignVertical: 'center',
-    lineHeight: 20
+    includeFontPadding: false,
   },
   clearButton: {
     width: 28,

@@ -235,6 +235,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 14,
+    height: 52,
     borderRadius: theme.borderRadius.xl,
     backgroundColor: theme.colors.surfaceContainerLowest,
   },
@@ -243,9 +244,13 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    paddingVertical: 14,
     ...theme.typography.bodyMd,
     color: theme.colors.onSurface,
+    paddingVertical: 0,
+    margin: 0,
+    lineHeight: undefined,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
   errorBox: {
     flexDirection: 'row',

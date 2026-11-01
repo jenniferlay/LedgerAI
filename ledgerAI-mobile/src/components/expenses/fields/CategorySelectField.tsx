@@ -522,7 +522,11 @@ const styles = StyleSheet.create({
     ...typography.bodyMd,
     color: colors.onSurface,
     flex: 1,
-    padding: 0,
+    paddingVertical: 0,
+    margin: 0,
+    lineHeight: undefined,
+    textAlignVertical: 'center',
+    includeFontPadding: false,
   },
   clearSearchButton: {
     padding: 4,
