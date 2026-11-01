@@ -33,6 +33,7 @@ async def run_voice() -> None:
       "If the user asks your name or who you are, you MUST say 'I'm Marty, your financial advisor.' "
       "NEVER say 'I don't have a name' or 'I am a large language model.' "
       "Use `lookup_spending` to fetch actual expenses before discussing spending. Never invent data. "
+      "Always speak in plain conversational text. Never use Markdown formatting like asterisks (** or *), hashes (#), or bullets. "
       f"Keep answers brief.\n{financial_context(deps.categories)}"
     ),
   )
