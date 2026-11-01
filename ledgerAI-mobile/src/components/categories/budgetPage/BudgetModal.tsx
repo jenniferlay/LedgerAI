@@ -2,7 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -97,13 +100,14 @@ export default function BudgetModal({
 
   const filteredCategories = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
+    if (!q) return prioritizedCategories;
     return prioritizedCategories.filter((c) => {
-      if (!q) return true;
       return c.name.toLowerCase().includes(q);
     });
   }, [prioritizedCategories, searchQuery]);
 
   const handleSave = async () => {
+    Keyboard.dismiss();
     setErrorMessage(null);
     const cleaned = amount.replace(/[^0-9.]/g, '');
     const num = parseFloat(cleaned);
@@ -141,6 +145,7 @@ export default function BudgetModal({
 
   const handleDelete = () => {
     if (!budget?.budgetid) return;
+    Keyboard.dismiss();
 
     Alert.alert(
       'Delete Budget',
@@ -168,8 +173,14 @@ export default function BudgetModal({
   };
 
   const handleAddNewCategory = () => {
+    Keyboard.dismiss();
     onClose();
     router.push('/(app)/(budgets)/add-category');
+  };
+
+  const handleDismiss = () => {
+    Keyboard.dismiss();
+    onClose();
   };
 
   if (!visible) return null;
@@ -179,216 +190,236 @@ export default function BudgetModal({
       visible={visible}
       transparent
       animationType="fade"
-      onRequestClose={onClose}
+      onRequestClose={handleDismiss}
     >
-      <Pressable style={styles.overlay} onPress={onClose}>
-        <Pressable style={styles.container} onPress={(e) => e.stopPropagation()}>
-          {/* Header */}
-          <View style={styles.header}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.title}>
-                {isEditing ? 'Edit Budget' : 'Set Category Budget'}
-              </Text>
-              <Text style={styles.subtitle}>
-                {isEditing
-                  ? 'Update or remove this monthly limit'
-                  : 'Select a category and assign a monthly limit'}
-              </Text>
-            </View>
-            <Pressable hitSlop={8} onPress={onClose} style={styles.closeBtn}>
-              <MaterialIcons name="close" size={22} color={colors.onSurfaceVariant} />
-            </Pressable>
-          </View>
-
-          {/* Error Message */}
-          {errorMessage && (
-            <View style={styles.errorBox}>
-              <MaterialIcons name="error-outline" size={18} color={colors.error} />
-              <Text style={styles.errorText}>{errorMessage}</Text>
-            </View>
-          )}
-
-          {/* Category Section */}
-          {isEditing ? (
-            <View style={styles.selectedCategoryCard}>
-              <View style={styles.categoryIconBox}>
-                <MaterialIcons
-                  name={
-                    (selectedCategory?.icon && selectedCategory.icon in MaterialIcons.glyphMap
-                      ? selectedCategory.icon
-                      : 'folder') as keyof typeof MaterialIcons.glyphMap
-                  }
-                  size={20}
-                  color={colors.primary}
-                />
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoid}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <Pressable style={styles.overlay} onPress={handleDismiss}>
+          <Pressable style={styles.container} onPress={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <View style={styles.header}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.title}>
+                  {isEditing ? 'Edit Budget' : 'Set Category Budget'}
+                </Text>
+                <Text style={styles.subtitle}>
+                  {isEditing
+                    ? 'Update or remove this monthly limit'
+                    : 'Select a category and assign a monthly limit'}
+                </Text>
               </View>
-              <Text style={styles.selectedCategoryText}>
-                {selectedCategory?.name ?? 'Category'}
-              </Text>
+              <Pressable hitSlop={8} onPress={handleDismiss} style={styles.closeBtn}>
+                <MaterialIcons name="close" size={22} color={colors.onSurfaceVariant} />
+              </Pressable>
             </View>
-          ) : (
-            <View style={styles.section}>
-              <View style={styles.sectionHeaderRow}>
-                <Text style={styles.fieldLabel}>Category</Text>
-                <Pressable onPress={handleAddNewCategory} style={styles.newCategoryLink}>
-                  <MaterialIcons name="add" size={16} color={colors.primary} />
-                  <Text style={styles.newCategoryLinkText}>New Category</Text>
-                </Pressable>
+
+            {/* Scrollable Content inside Modal to never get blocked by keyboard */}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={styles.scrollContent}
+              bounces={false}
+            >
+              {/* Error Message */}
+              {errorMessage && (
+                <View style={styles.errorBox}>
+                  <MaterialIcons name="error-outline" size={18} color={colors.error} />
+                  <Text style={styles.errorText}>{errorMessage}</Text>
+                </View>
+              )}
+
+              {/* Category Section */}
+              {isEditing ? (
+                <View style={styles.selectedCategoryCard}>
+                  <View style={styles.categoryIconBox}>
+                    <MaterialIcons
+                      name={
+                        (selectedCategory?.icon && selectedCategory.icon in MaterialIcons.glyphMap
+                          ? selectedCategory.icon
+                          : 'folder') as keyof typeof MaterialIcons.glyphMap
+                      }
+                      size={20}
+                      color={colors.primary}
+                    />
+                  </View>
+                  <Text style={styles.selectedCategoryText}>
+                    {selectedCategory?.name ?? 'Category'}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.section}>
+                  <View style={styles.sectionHeaderRow}>
+                    <Text style={styles.fieldLabel}>Category</Text>
+                    <Pressable onPress={handleAddNewCategory} style={styles.newCategoryLink}>
+                      <MaterialIcons name="add" size={16} color={colors.primary} />
+                      <Text style={styles.newCategoryLinkText}>New Category</Text>
+                    </Pressable>
+                  </View>
+
+                  {/* Category Search Input */}
+                  <View style={styles.searchBar}>
+                    <MaterialIcons name="search" size={18} color={colors.onSurfaceVariant} />
+                    <TextInput
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                      placeholder="Search categories..."
+                      placeholderTextColor="rgba(134, 148, 138, 0.4)"
+                      style={styles.searchInput}
+                      autoCapitalize="none"
+                      returnKeyType="done"
+                    />
+                    {searchQuery.length > 0 && (
+                      <Pressable hitSlop={8} onPress={() => setSearchQuery('')}>
+                        <MaterialIcons name="close" size={16} color={colors.onSurfaceVariant} />
+                      </Pressable>
+                    )}
+                  </View>
+
+                  {/* Categories List */}
+                  <View style={styles.categoryPickerContainer}>
+                    {loadingCategories ? (
+                      <ActivityIndicator size="small" color={colors.primary} style={{ padding: 20 }} />
+                    ) : (
+                      <ScrollView
+                        style={styles.categoryScroll}
+                        nestedScrollEnabled
+                        keyboardShouldPersistTaps="handled"
+                      >
+                        {filteredCategories.length === 0 ? (
+                          <Text style={styles.noCategoriesText}>No categories found</Text>
+                        ) : (
+                          filteredCategories.map((cat) => {
+                            const isSelected = selectedCategoryId === cat.categoryid;
+                            const hasExistingBudget = existingBudgetCategoryIds.has(cat.categoryid);
+                            const iconName = (cat.icon && cat.icon in MaterialIcons.glyphMap
+                              ? cat.icon
+                              : 'folder') as keyof typeof MaterialIcons.glyphMap;
+
+                            return (
+                              <Pressable
+                                key={cat.categoryid}
+                                style={[
+                                  styles.categoryItem,
+                                  isSelected && styles.categoryItemSelected,
+                                ]}
+                                onPress={() => {
+                                  Keyboard.dismiss();
+                                  setSelectedCategoryId(cat.categoryid);
+                                }}
+                              >
+                                <View style={styles.categoryItemLeft}>
+                                  <MaterialIcons
+                                    name={iconName}
+                                    size={18}
+                                    color={isSelected ? colors.primary : colors.onSurfaceVariant}
+                                  />
+                                  <Text
+                                    style={[
+                                      styles.categoryItemText,
+                                      isSelected && styles.categoryItemTextSelected,
+                                    ]}
+                                  >
+                                    {cat.name}
+                                  </Text>
+                                  {cat.is_custom && (
+                                    <View style={styles.customBadge}>
+                                      <Text style={styles.customBadgeText}>Custom</Text>
+                                    </View>
+                                  )}
+                                </View>
+                                {hasExistingBudget && (
+                                  <View style={styles.hasBudgetBadge}>
+                                    <Text style={styles.hasBudgetText}>Has Budget</Text>
+                                  </View>
+                                )}
+                                {isSelected && (
+                                  <MaterialIcons name="check" size={18} color={colors.primary} />
+                                )}
+                              </Pressable>
+                            );
+                          })
+                        )}
+                      </ScrollView>
+                    )}
+                  </View>
+                </View>
+              )}
+
+              {/* Amount Input */}
+              <View style={styles.section}>
+                <Text style={styles.fieldLabel}>Monthly Spending Limit</Text>
+                <View style={styles.amountInputContainer}>
+                  <Text style={styles.currencyPrefix}>$</Text>
+                  <TextInput
+                    accessibilityLabel="Monthly budget amount"
+                    style={styles.amountInput}
+                    value={amount}
+                    onChangeText={setAmount}
+                    placeholder="0.00"
+                    placeholderTextColor="rgba(134, 148, 138, 0.35)"
+                    keyboardType="decimal-pad"
+                    returnKeyType="done"
+                    selectionColor={colors.primary}
+                    cursorColor={colors.primary}
+                  />
+                  <Text style={styles.perMonthText}>/ month</Text>
+                </View>
               </View>
 
-              {/* Category Search Input */}
-              <View style={styles.searchBar}>
-                <MaterialIcons name="search" size={18} color={colors.onSurfaceVariant} />
-                <TextInput
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  placeholder="Search categories..."
-                  placeholderTextColor="rgba(134, 148, 138, 0.4)"
-                  style={styles.searchInput}
-                  autoCapitalize="none"
-                />
-                {searchQuery.length > 0 && (
-                  <Pressable hitSlop={8} onPress={() => setSearchQuery('')}>
-                    <MaterialIcons name="close" size={16} color={colors.onSurfaceVariant} />
+              {/* Actions */}
+              <View style={styles.actions}>
+                {isEditing && (
+                  <Pressable
+                    accessibilityLabel="Delete budget"
+                    disabled={isSubmitting}
+                    onPress={handleDelete}
+                    style={({ pressed }) => [
+                      styles.btnDelete,
+                      pressed && { opacity: 0.7 },
+                      isSubmitting && { opacity: 0.5 },
+                    ]}
+                  >
+                    <MaterialIcons name="delete-outline" size={18} color={colors.error} />
+                    <Text style={styles.btnDeleteText}>Delete</Text>
                   </Pressable>
                 )}
+
+                <Pressable
+                  accessibilityLabel="Save budget"
+                  disabled={isSubmitting}
+                  onPress={handleSave}
+                  style={({ pressed }) => [
+                    styles.btnSave,
+                    pressed && { opacity: 0.8 },
+                    isSubmitting && { opacity: 0.5 },
+                  ]}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator size="small" color={colors.onPrimaryContainer} />
+                  ) : (
+                    <>
+                      <MaterialIcons name="check" size={18} color={colors.onPrimaryContainer} />
+                      <Text style={styles.btnSaveText}>
+                        {isEditing ? 'Update Budget' : 'Save Budget'}
+                      </Text>
+                    </>
+                  )}
+                </Pressable>
               </View>
-
-              {/* Categories List */}
-              <View style={styles.categoryPickerContainer}>
-                {loadingCategories ? (
-                  <ActivityIndicator size="small" color={colors.primary} style={{ padding: 20 }} />
-                ) : (
-                  <ScrollView
-                    style={styles.categoryScroll}
-                    nestedScrollEnabled
-                    keyboardShouldPersistTaps="handled"
-                  >
-                    {filteredCategories.length === 0 ? (
-                      <Text style={styles.noCategoriesText}>No categories found</Text>
-                    ) : (
-                      filteredCategories.map((cat) => {
-                        const isSelected = selectedCategoryId === cat.categoryid;
-                        const hasExistingBudget = existingBudgetCategoryIds.has(cat.categoryid);
-                        const iconName = (cat.icon && cat.icon in MaterialIcons.glyphMap
-                          ? cat.icon
-                          : 'folder') as keyof typeof MaterialIcons.glyphMap;
-
-                        return (
-                          <Pressable
-                            key={cat.categoryid}
-                            style={[
-                              styles.categoryItem,
-                              isSelected && styles.categoryItemSelected,
-                            ]}
-                            onPress={() => setSelectedCategoryId(cat.categoryid)}
-                          >
-                            <View style={styles.categoryItemLeft}>
-                              <MaterialIcons
-                                name={iconName}
-                                size={18}
-                                color={isSelected ? colors.primary : colors.onSurfaceVariant}
-                              />
-                              <Text
-                                style={[
-                                  styles.categoryItemText,
-                                  isSelected && styles.categoryItemTextSelected,
-                                ]}
-                              >
-                                {cat.name}
-                              </Text>
-                              {cat.is_custom && (
-                                <View style={styles.customBadge}>
-                                  <Text style={styles.customBadgeText}>Custom</Text>
-                                </View>
-                              )}
-                            </View>
-                            {hasExistingBudget && (
-                              <View style={styles.hasBudgetBadge}>
-                                <Text style={styles.hasBudgetText}>Has Budget</Text>
-                              </View>
-                            )}
-                            {isSelected && (
-                              <MaterialIcons name="check" size={18} color={colors.primary} />
-                            )}
-                          </Pressable>
-                        );
-                      })
-                    )}
-                  </ScrollView>
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* Amount Input */}
-          <View style={styles.section}>
-            <Text style={styles.fieldLabel}>Monthly Spending Limit</Text>
-            <View style={styles.amountInputContainer}>
-              <Text style={styles.currencyPrefix}>$</Text>
-              <TextInput
-                accessibilityLabel="Monthly budget amount"
-                style={styles.amountInput}
-                value={amount}
-                onChangeText={setAmount}
-                placeholder="0.00"
-                placeholderTextColor="rgba(134, 148, 138, 0.35)"
-                keyboardType="decimal-pad"
-                returnKeyType="done"
-                selectionColor={colors.primary}
-                cursorColor={colors.primary}
-              />
-              <Text style={styles.perMonthText}>/ month</Text>
-            </View>
-          </View>
-
-          {/* Actions */}
-          <View style={styles.actions}>
-            {isEditing && (
-              <Pressable
-                accessibilityLabel="Delete budget"
-                disabled={isSubmitting}
-                onPress={handleDelete}
-                style={({ pressed }) => [
-                  styles.btnDelete,
-                  pressed && { opacity: 0.7 },
-                  isSubmitting && { opacity: 0.5 },
-                ]}
-              >
-                <MaterialIcons name="delete-outline" size={18} color={colors.error} />
-                <Text style={styles.btnDeleteText}>Delete</Text>
-              </Pressable>
-            )}
-
-            <Pressable
-              accessibilityLabel="Save budget"
-              disabled={isSubmitting}
-              onPress={handleSave}
-              style={({ pressed }) => [
-                styles.btnSave,
-                pressed && { opacity: 0.8 },
-                isSubmitting && { opacity: 0.5 },
-              ]}
-            >
-              {isSubmitting ? (
-                <ActivityIndicator size="small" color={colors.onPrimaryContainer} />
-              ) : (
-                <>
-                  <MaterialIcons name="check" size={18} color={colors.onPrimaryContainer} />
-                  <Text style={styles.btnSaveText}>
-                    {isEditing ? 'Update Budget' : 'Save Budget'}
-                  </Text>
-                </>
-              )}
-            </Pressable>
-          </View>
+            </ScrollView>
+          </Pressable>
         </Pressable>
-      </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  keyboardAvoid: {
+    flex: 1,
+  },
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
@@ -398,10 +429,12 @@ const styles = StyleSheet.create({
   },
   container: {
     width: '100%',
-    maxHeight: '85%',
+    maxHeight: '90%',
     backgroundColor: colors.surfaceContainerLow,
     borderRadius: borderRadius.xxl,
-    padding: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
     shadowColor: '#000',
@@ -409,12 +442,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 20,
     elevation: 20,
-    gap: spacing.md,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
+    marginBottom: spacing.md,
+  },
+  scrollContent: {
+    gap: spacing.md,
+    paddingBottom: spacing.sm,
   },
   title: {
     ...typography.headlineSm,
@@ -485,13 +522,13 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   categoryPickerContainer: {
-    maxHeight: 160,
+    maxHeight: 140,
     borderRadius: borderRadius.lg,
     backgroundColor: colors.surfaceContainerHigh,
     overflow: 'hidden',
   },
   categoryScroll: {
-    maxHeight: 160,
+    maxHeight: 140,
   },
   categoryItem: {
     flexDirection: 'row',
@@ -519,14 +556,7 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
   },
-  hasBudgetBadge: {
-    backgroundColor: colors.surfaceContainerLowest ?? '#121212',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: borderRadius.sm,
-    marginRight: 6,
-  },
-    customBadge: {
+  customBadge: {
     backgroundColor: 'rgba(78, 222, 163, 0.15)',
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -537,6 +567,13 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 10,
     fontWeight: '600',
+  },
+  hasBudgetBadge: {
+    backgroundColor: colors.surfaceContainerLowest ?? '#121212',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+    marginRight: 6,
   },
   hasBudgetText: {
     ...typography.labelSm,
@@ -600,7 +637,7 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     gap: spacing.sm,
-    marginTop: 8,
+    marginTop: 4,
   },
   btnDelete: {
     flexDirection: 'row',
@@ -635,4 +672,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
