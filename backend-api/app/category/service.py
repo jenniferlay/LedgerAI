@@ -44,8 +44,7 @@ async def create_category(
 	db: AsyncSession, user_id: int, data: CategoryCreate
 ) -> Category:
 	if data.parent_categoryid is not None:
-		# The composite FK requires parent and child to share a userid, so a
-		# user's subcategory can only sit under one of their own categories.
+		# Subcategories can sit under global categories or the user's own categories.
 		parent = await db.scalar(
 			select(Category).where(
 				Category.categoryid == data.parent_categoryid,

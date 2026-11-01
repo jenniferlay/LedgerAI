@@ -10,9 +10,9 @@ CREATE TABLE categories (
 
   UNIQUE (categoryid, userid),
 
-  FOREIGN KEY (parent_categoryid, userid)
-    REFERENCES categories (categoryid, userid)
-    ON DELETE SET NULL (parent_categoryid),
+  FOREIGN KEY (parent_categoryid)
+    REFERENCES categories (categoryid)
+    ON DELETE SET NULL,
 
   UNIQUE NULLS NOT DISTINCT (userid, parent_categoryid, name)
 );
