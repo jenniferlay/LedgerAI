@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class LinkTokenResponse(BaseModel):
@@ -36,3 +36,35 @@ class SyncSummary(BaseModel):
 class PublicTokenExchangeResponse(BaseModel):
   item_id: str
   sync_summary: SyncSummary
+
+
+class PlaidAccountResponse(BaseModel):
+  model_config = ConfigDict(from_attributes=True)
+
+  id: int
+  item_id: str
+  account_id: str
+  name: str
+  official_name: str | None = None
+  type: str
+  subtype: str | None = None
+  mask: str | None = None
+  current_balance: float | None = None
+  available_balance: float | None = None
+  credit_limit: float | None = None
+  iso_currency_code: str | None = None
+  is_active: bool
+
+
+class NetWorthResponse(BaseModel):
+  net_worth: float
+  total_assets: float
+  total_liabilities: float
+  depository_total: float
+  credit_total: float
+  currency: str = "USD"
+  account_count: int
+
+
+class AccountUpdate(BaseModel):
+  is_active: bool

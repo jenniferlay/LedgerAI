@@ -20,6 +20,7 @@ def test_spend_subquery_uses_signed_amounts_and_effective_plaid_categories() -> 
 	assert "categories.plaid_code" in sql
 	assert "plaid_transactions.categoryid" in sql
 	assert "plaid_transactions.hidden IS false" in sql
+	assert "plaid_transactions.is_transfer IS false" in sql
 	assert "plaid_transactions.amount <" not in sql
 
 

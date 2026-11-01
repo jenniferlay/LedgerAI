@@ -220,3 +220,77 @@ async def test_sync_plaid_item_marks_reauthentication_required(
     statement.compile().params.get("requires_reauth") is True
     for statement in update_statements
   )
+
+
+def test_transaction_values_detects_transfers_and_credit_card_payments() -> None:
+  coffee = service._transaction_values(_transaction("tx-1"))
+  assert coffee["is_transfer"] is False
+
+  transfer_tx = SimpleNamespace(
+    transaction_id="tx-2",
+    account_id="acc-1",
+    pending_transaction_id=None,
+    amount=500.0,
+    date=date(2026, 10, 1),
+    authorized_date=None,
+    name="Transfer to Savings",
+    merchant_name=None,
+    pending=False,
+    iso_currency_code="USD",
+    unofficial_currency_code=None,
+    personal_finance_category=SimpleNamespace(
+      primary="TRANSFER_OUT",
+      detailed="TRANSFER_OUT_SAVINGS",
+    ),
+  )
+  transfer_values = service._transaction_values(transfer_tx)
+  assert transfer_values["is_transfer"] is True
+
+  card_payment_tx = SimpleNamespace(
+    transaction_id="tx-3",
+    account_id="acc-1",
+    pending_transaction_id=None,
+    amount=150.0,
+    date=date(2026, 10, 2),
+    authorized_date=None,
+    name="Chase Card Payment",
+    merchant_name="Chase",
+    pending=False,
+    iso_currency_code="USD",
+    unofficial_currency_code=None,
+    personal_finance_category=SimpleNamespace(
+      primary="LOAN_PAYMENTS",
+      detailed="LOAN_PAYMENTS_CREDIT_CARD_PAYMENT",
+    ),
+  )
+  card_payment_values = service._transaction_values(card_payment_tx)
+  assert card_payment_values["is_transfer"] is True
+
+
+def test_account_values_parses_depository_and_credit_accounts() -> None:
+  account_data = SimpleNamespace(
+    account_id="acc-chase-checking",
+    name="Total Checking",
+    official_name="Chase Premier Plus Checking",
+    type=SimpleNamespace(value="depository"),
+    subtype=SimpleNamespace(value="checking"),
+    mask="1234",
+    balances=SimpleNamespace(
+      current=1520.50,
+      available=1500.00,
+      limit=None,
+      iso_currency_code="USD",
+      unofficial_currency_code=None,
+    ),
+  )
+  values = service._account_values(account_data)
+
+  assert values["account_id"] == "acc-chase-checking"
+  assert values["name"] == "Total Checking"
+  assert values["type"] == "depository"
+  assert values["subtype"] == "checking"
+  assert values["mask"] == "1234"
+  assert values["current_balance"] == Decimal("1520.50")
+  assert values["available_balance"] == Decimal("1500.00")
+  assert values["credit_limit"] is None
+  assert values["iso_currency_code"] == "USD"

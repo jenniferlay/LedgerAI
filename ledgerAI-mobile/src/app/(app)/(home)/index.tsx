@@ -7,7 +7,7 @@ import theme from '@/constants/theme';
 import { useAuth } from '@/context/auth';
 import PrimaryActionButton from '@/components/shared/PrimaryActionButton';
 import type { LinkExit } from 'react-native-plaid-link-sdk';
-import { createLinkToken, exchangePublicToken } from '@/services/plaid-api';
+import { createLinkToken, exchangePublicToken, getNetWorth } from '@/services/plaid-api';
 import { invalidateExpenseCache } from '@/services/expenses-api';
 import RecentActivity from '@/components/RecentActivity';
 import NetWorthCard from '@/components/NetWorthCard';
@@ -36,6 +36,20 @@ export default function AppHomeScreen() {
   const [linkError, setLinkError] = useState<string | null>(null);
   const [linkMessage, setLinkMessage] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [netWorth, setNetWorth] = useState<number>(0);
+
+  const loadNetWorth = useCallback(async () => {
+    try {
+      const data = await getNetWorth();
+      setNetWorth(data.net_worth);
+    } catch {
+      // Keep existing balance if offline
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void loadNetWorth();
+  }, [loadNetWorth]);
 
   const [budgets, setBudgets] = useState<Budget[]>([
     {
@@ -126,6 +140,7 @@ export default function AppHomeScreen() {
         setLinkError(null);
       }
       invalidateExpenseCache();
+      void loadNetWorth();
     } catch (error) {
       setLinkError(error instanceof Error ? error.message : 'Could not connect to Plaid. Please try again.');
       setLinkMessage(null);
@@ -168,7 +183,10 @@ export default function AppHomeScreen() {
     }
   };
 
-  const onRefresh = useCallback(() => setRefreshing(true), []);
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    void loadNetWorth();
+  }, [loadNetWorth]);
   const onRefreshComplete = useCallback(() => setRefreshing(false), []);
 
   return (
@@ -185,7 +203,7 @@ export default function AppHomeScreen() {
           />
         }
       >
-        <NetWorthCard amount={10000} name="John Doe" />
+        <NetWorthCard amount={netWorth} name="Member" />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.budgetRow}>
           {budgets.map((budget) => (
             <BudgetCard

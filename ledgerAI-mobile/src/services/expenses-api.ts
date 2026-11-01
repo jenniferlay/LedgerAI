@@ -23,6 +23,11 @@ const ExpenseFeedItemSchema = z.object({
   account_id: z.string().nullable().optional(),
   pending: z.boolean().nullable().optional(),
   currency: z.string().nullable().optional(),
+  is_transfer: z.boolean().nullable().optional(),
+  account_name: z.string().nullable().optional(),
+  account_mask: z.string().nullable().optional(),
+  account_type: z.string().nullable().optional(),
+  account_subtype: z.string().nullable().optional(),
 });
 
 export type ExpenseFeedItem = z.infer<typeof ExpenseFeedItemSchema>;

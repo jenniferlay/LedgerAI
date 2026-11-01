@@ -26,9 +26,10 @@ export interface ActivityItem {
   rawDate: string;
   amount: string;
   rawAmount: number;
-  kind: 'income' | 'expense';
+  kind: 'income' | 'expense' | 'transfer';
   note?: string;
   categoryId?: number | null;
+  accountLabel?: string;
 }
 
 function formatActivityDate(value: string): string {
@@ -51,21 +52,45 @@ function formatActivityAmount(amount: number): string {
 }
 
 function toActivityItem(item: ExpenseFeedItem): ActivityItem {
-  const isIncome = item.amount < 0;
+  const isTransfer = Boolean(item.is_transfer);
+  const isIncome = !isTransfer && item.amount < 0;
+  const kind: 'income' | 'expense' | 'transfer' = isTransfer
+    ? 'transfer'
+    : isIncome
+      ? 'income'
+      : 'expense';
+
+  let categoryLabel: string;
+  if (item.source === 'manual') {
+    categoryLabel = isIncome ? 'Manual income' : 'Manual expense';
+  } else if (isTransfer) {
+    categoryLabel = 'Transfer / Payment';
+  } else if (item.account_name) {
+    categoryLabel = item.account_mask
+      ? `${item.account_name} (•${item.account_mask})`
+      : item.account_name;
+  } else {
+    categoryLabel = 'Bank transaction';
+  }
+
+  const sign = isTransfer ? '' : isIncome ? '+' : '-';
 
   return {
     id: `${item.source}-${item.id}`,
     source: item.source,
     rawId: item.id,
     merchant: item.merchant || item.description,
-    category: item.source === 'manual' ? (isIncome ? 'Manual income' : 'Manual expense') : 'Bank transaction',
+    category: categoryLabel,
     date: formatActivityDate(item.spent_on),
     rawDate: item.spent_on.slice(0, 10),
-    amount: `${isIncome ? '+' : '-'}$${formatActivityAmount(Math.abs(item.amount))}`,
+    amount: `${sign}$${formatActivityAmount(Math.abs(item.amount))}`,
     rawAmount: Math.abs(item.amount),
-    kind: isIncome ? 'income' : 'expense',
+    kind,
     note: item.merchant ? item.description : undefined,
     categoryId: item.categoryid,
+    accountLabel: item.account_name
+      ? `${item.account_name}${item.account_mask ? ` •${item.account_mask}` : ''}`
+      : undefined,
   };
 }
 
@@ -99,6 +124,24 @@ function ActivityError({ message, onRetry }: { message: string; onRetry: () => v
 
 function ActivityCard({ item, router }: { item: ActivityItem; router: any }) {
   const isIncome = item.kind === 'income';
+  const isTransfer = item.kind === 'transfer';
+  const iconName = isTransfer ? 'swap-horiz' : isIncome ? 'payments' : 'receipt-long';
+  const iconBgType = isIncome
+    ? 'secondaryContainer'
+    : isTransfer
+      ? 'surfaceContainer'
+      : 'surfaceContainerHigh';
+  const iconColor = isIncome
+    ? colors.primary
+    : isTransfer
+      ? colors.onSurfaceVariant
+      : colors.onSurface;
+  const amountColor = isIncome
+    ? 'primary'
+    : isTransfer
+      ? 'onSurfaceVariant'
+      : 'onSurface';
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -110,7 +153,7 @@ function ActivityCard({ item, router }: { item: ActivityItem; router: any }) {
             editSource: item.source,
             editId: String(item.rawId),
             amount: String(item.rawAmount),
-            type: item.kind,
+            type: item.kind === 'transfer' ? 'expense' : item.kind,
             merchant: item.merchant,
             note: item.note ?? '',
             spentOn: item.rawDate,
@@ -126,13 +169,13 @@ function ActivityCard({ item, router }: { item: ActivityItem; router: any }) {
       <ThemedView type="surfaceContainer" style={styles.card}>
         <View style={styles.row}>
           <ThemedView
-            type={isIncome ? 'secondaryContainer' : 'surfaceContainerHigh'}
+            type={iconBgType}
             style={styles.icon}
           >
             <MaterialIcons
-              name={isIncome ? 'payments' : 'receipt-long'}
+              name={iconName}
               size={20}
-              color={isIncome ? colors.primary : colors.onSurface}
+              color={iconColor}
             />
           </ThemedView>
           <View style={styles.details}>
@@ -147,7 +190,7 @@ function ActivityCard({ item, router }: { item: ActivityItem; router: any }) {
           </View>
           <ThemedText
             type="smallBold"
-            themeColor={isIncome ? 'primary' : 'onSurface'}
+            themeColor={amountColor}
             style={styles.amount}
           >
             {item.amount}

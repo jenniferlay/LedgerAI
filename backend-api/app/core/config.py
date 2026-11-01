@@ -16,5 +16,7 @@ class Settings(BaseSettings):
   plaid_secret: str | None = None
   plaid_access_token_encryption_key: str | None = None
   plaid_env: Literal["sandbox"] = "sandbox"
+  plaid_webhook_url: str | None = None
+
 
 settings = Settings()

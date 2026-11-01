@@ -17,6 +17,7 @@ from app.expenses.models import Expense
 from app.category.service import get_category_owner
 from app.expenses.schemas import ExpenseCreate, ExpenseUpdate
 from app.plaid.models import (
+	PlaidAccount,
 	PlaidItem,
 	PlaidTransaction,
 	plaid_effective_categoryid,
@@ -109,6 +110,11 @@ async def list_expense_feed(
 		literal(None, type_=String).label("account_id"),
 		literal(None, type_=Boolean).label("pending"),
 		literal(None, type_=String).label("currency"),
+		literal(False, type_=Boolean).label("is_transfer"),
+		literal(None, type_=String).label("account_name"),
+		literal(None, type_=String).label("account_mask"),
+		literal(None, type_=String).label("account_type"),
+		literal(None, type_=String).label("account_subtype"),
 	).where(Expense.userid == user_id)
 
 	plaid_query = (
@@ -134,8 +140,14 @@ async def list_expense_feed(
 				PlaidTransaction.iso_currency_code,
 				PlaidTransaction.unofficial_currency_code,
 			).label("currency"),
+			PlaidTransaction.is_transfer.label("is_transfer"),
+			PlaidAccount.name.label("account_name"),
+			PlaidAccount.mask.label("account_mask"),
+			PlaidAccount.type.label("account_type"),
+			PlaidAccount.subtype.label("account_subtype"),
 		)
 		.join(PlaidItem, PlaidTransaction.plaid_item_id == PlaidItem.id)
+		.outerjoin(PlaidAccount, PlaidTransaction.account_id == PlaidAccount.account_id)
 		.where(PlaidItem.user_id == user_id, PlaidTransaction.hidden.is_(False))
 	)
 

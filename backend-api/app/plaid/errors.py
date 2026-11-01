@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from app.plaid.accounts_service import PlaidAccountNotFoundError
 from app.plaid.client import PlaidConfigurationError
 from app.plaid.security import (
   PlaidAccessTokenDecryptionError,
@@ -22,6 +23,7 @@ PLAID_ERROR_RESPONSES: dict[type[Exception], tuple[int, str]] = {
     "The Plaid public token is invalid or expired",
   ),
   PlaidItemNotFoundError: (404, "Plaid item not found"),
+  PlaidAccountNotFoundError: (404, "Plaid account not found"),
   PlaidAccessTokenDecryptionError: (
     503,
     "Stored Plaid access token could not be decrypted",

@@ -3,6 +3,7 @@ import getpass
 import os
 from dataclasses import dataclass
 from datetime import date
+from typing import Any
 
 import httpx
 import pydantic_ai
@@ -30,6 +31,35 @@ class ExpenseRecord(BaseModel):
   account_id: str | None = None
   pending: bool | None = None
   currency: str | None = None
+  is_transfer: bool = False
+  account_name: str | None = None
+  account_mask: str | None = None
+  account_type: str | None = None
+  account_subtype: str | None = None
+
+
+class AccountRecord(BaseModel):
+  account_id: str
+  name: str
+  official_name: str | None = None
+  type: str
+  subtype: str | None = None
+  mask: str | None = None
+  current_balance: float | None = None
+  available_balance: float | None = None
+  credit_limit: float | None = None
+  iso_currency_code: str | None = "USD"
+  is_active: bool
+
+
+class NetWorthRecord(BaseModel):
+  net_worth: float
+  total_assets: float
+  total_liabilities: float
+  depository_total: float
+  credit_total: float
+  currency: str = "USD"
+  account_count: int
 
 
 class CategoryRecord(BaseModel):
@@ -79,10 +109,14 @@ advisor_agent = Agent(
   system_prompt=(
     "Your name is Marty. Always introduce yourself as Marty if asked who you are. "
     "You are a friendly, down-to-earth personal financial advisor. "
-    "Use `lookup_spending` to retrieve the user's actual expenses before discussing their spending. "
-    "Never invent transactions, totals, categories, or dates. Explain when returned records do not "
-    "contain enough information to answer. The lookup returns at most the latest 100 matching "
-    "expenses, so do not present a partial result as a complete total. "
+    "You have tools to inspect the user's spending history (`lookup_spending`), linked bank accounts and balances "
+    "(`lookup_accounts`), total net worth (`lookup_net_worth`), and monthly budgets (`lookup_budgets`). "
+    "Always retrieve the user's actual data before discussing their finances. "
+    "Understand the nuance between accounts: checking is everyday spending cash, savings is reserve wealth, "
+    "and credit cards are revolving debt with limits and utilization. "
+    "Transfers between checking and savings or credit card payments are internal money movements, not living expenses. "
+    "Never invent transactions, totals, categories, balances, or dates. Explain when returned records do not "
+    "contain enough information to answer. "
     "Keep your answers brief, warm, and conversational so they sound natural spoken aloud."
   ),
 )
@@ -126,6 +160,49 @@ async def lookup_spending(
     response.raise_for_status()
     ret = TypeAdapter(list[ExpenseRecord]).validate_python(response.json())
     return ret
+
+
+@advisor_agent.tool
+async def lookup_accounts(ctx: RunContext[AgentDeps]) -> list[AccountRecord]:
+  """Read the user's linked bank accounts (checking, savings, credit cards) with balances and limits."""
+  async with httpx.AsyncClient(timeout=10) as client:
+    response = await client.get(
+      f"{ctx.deps.api_base_url}/plaid/accounts",
+      headers={"Authorization": f"Bearer {ctx.deps.access_token}"},
+    )
+    response.raise_for_status()
+    return TypeAdapter(list[AccountRecord]).validate_python(response.json())
+
+
+@advisor_agent.tool
+async def lookup_net_worth(ctx: RunContext[AgentDeps]) -> NetWorthRecord:
+  """Get the user's current net worth, total assets (checking/savings/investments), and total liabilities (credit cards/loans)."""
+  async with httpx.AsyncClient(timeout=10) as client:
+    response = await client.get(
+      f"{ctx.deps.api_base_url}/plaid/accounts/net-worth",
+      headers={"Authorization": f"Bearer {ctx.deps.access_token}"},
+    )
+    response.raise_for_status()
+    return TypeAdapter(NetWorthRecord).validate_python(response.json())
+
+
+@advisor_agent.tool
+async def lookup_budgets(
+  ctx: RunContext[AgentDeps],
+  month: date | None = None,
+) -> dict[str, Any]:
+  """Read the user's monthly budget limits, actual spending by category, remaining budget, and days remaining."""
+  params = {}
+  if month is not None:
+    params["month"] = month.isoformat()
+  async with httpx.AsyncClient(timeout=10) as client:
+    response = await client.get(
+      f"{ctx.deps.api_base_url}/budgets",
+      headers={"Authorization": f"Bearer {ctx.deps.access_token}"},
+      params=params,
+    )
+    response.raise_for_status()
+    return response.json()
 
 
 async def get_agent_deps() -> AgentDeps:

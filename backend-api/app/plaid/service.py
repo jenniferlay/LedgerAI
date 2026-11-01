@@ -17,8 +17,9 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
+from app.core.config import settings
 from app.plaid.client import get_plaid_client
-from app.plaid.models import PlaidItem, PlaidTransaction
+from app.plaid.models import PlaidAccount, PlaidItem, PlaidTransaction
 from app.plaid.schemas import SyncSummary
 from app.plaid.security import (
   decrypt_access_token,
@@ -39,15 +40,48 @@ class PlaidItemNotFoundError(LookupError):
   pass
 
 
+def _is_transfer_category(detailed: str | None) -> bool:
+  if not detailed:
+    return False
+  return (
+    detailed.startswith("TRANSFER_IN")
+    or detailed.startswith("TRANSFER_OUT")
+    or detailed == "LOAN_PAYMENTS_CREDIT_CARD_PAYMENT"
+  )
+
+
+def _to_decimal(val: Any) -> Decimal | None:
+  if val is None:
+    return None
+  if isinstance(val, Decimal):
+    return val
+  try:
+    return Decimal(str(val))
+  except (ArithmeticError, ValueError, TypeError):
+    return None
+
+
+def _enum_str(val: Any) -> str | None:
+  if val is None:
+    return None
+  if hasattr(val, "value"):
+    return str(val.value)
+  return str(val)
+
+
 async def create_link_token(user_id: int) -> str:
   client = get_plaid_client()
-  request = LinkTokenCreateRequest(
-    user=LinkTokenCreateRequestUser(client_user_id=str(user_id)),
-    client_name="LedgerAI",
-    products=[Products("transactions")],
-    country_codes=[CountryCode("US")],
-    language="en",
-  )
+  kwargs: dict[str, Any] = {
+    "user": LinkTokenCreateRequestUser(client_user_id=str(user_id)),
+    "client_name": "LedgerAI",
+    "products": [Products("transactions")],
+    "country_codes": [CountryCode("US")],
+    "language": "en",
+  }
+  if settings.plaid_webhook_url:
+    kwargs["webhook"] = settings.plaid_webhook_url
+
+  request = LinkTokenCreateRequest(**kwargs)
 
   try:
     response = await run_in_threadpool(client.link_token_create, request)
@@ -193,6 +227,12 @@ async def sync_plaid_item(
           )
         raise PlaidApiError("Unable to sync Plaid transactions") from exc
 
+      raw_accounts = getattr(response, "accounts", None) or []
+      accounts = list(raw_accounts) if raw_accounts else []
+      if accounts:
+        accounts_imported = await _upsert_accounts(db, item.id, accounts)
+        summary.accounts_imported += accounts_imported
+
       added = list(response.added)
       modified = list(response.modified)
       await _upsert_transactions(db, item.id, [*added, *modified])
@@ -219,6 +259,72 @@ async def sync_plaid_item(
       .values(sync_started_at=None)
     )
     await db.commit()
+
+
+async def _upsert_accounts(
+  db: AsyncSession,
+  plaid_item_id: int,
+  accounts: list[Any],
+) -> int:
+  values_by_id: dict[str, dict[str, Any]] = {}
+  for account in accounts:
+    values = _account_values(account)
+    if values.get("account_id"):
+      values_by_id[values["account_id"]] = values
+
+  values = list(values_by_id.values())
+  if not values:
+    return 0
+
+  for offset in range(0, len(values), 500):
+    chunk = values[offset : offset + 500]
+    insert_stmt = insert(PlaidAccount).values(
+      [{"plaid_item_id": plaid_item_id, **row} for row in chunk]
+    )
+    update_values = {
+      column: insert_stmt.excluded[column]
+      for column in chunk[0]
+      if column not in {"account_id", "plaid_item_id", "is_active"}
+    }
+    update_values["updated_at"] = func.now()
+    await db.execute(
+      insert_stmt.on_conflict_do_update(
+        index_elements=[PlaidAccount.account_id],
+        set_=update_values,
+      )
+    )
+  return len(values)
+
+
+def _account_values(account: Any) -> dict[str, Any]:
+  balances = _account_value(account, "balances")
+  current_bal = _account_value(balances, "current") if balances is not None else None
+  avail_bal = _account_value(balances, "available") if balances is not None else None
+  limit_bal = _account_value(balances, "limit") if balances is not None else None
+  iso_code = _account_value(balances, "iso_currency_code") if balances is not None else None
+  unofficial_code = (
+    _account_value(balances, "unofficial_currency_code") if balances is not None else None
+  )
+
+  return {
+    "account_id": _account_value(account, "account_id"),
+    "name": _account_value(account, "name") or "Account",
+    "official_name": _account_value(account, "official_name"),
+    "type": _enum_str(_account_value(account, "type")) or "other",
+    "subtype": _enum_str(_account_value(account, "subtype")),
+    "mask": _account_value(account, "mask"),
+    "current_balance": _to_decimal(current_bal),
+    "available_balance": _to_decimal(avail_bal),
+    "credit_limit": _to_decimal(limit_bal),
+    "iso_currency_code": iso_code,
+    "unofficial_currency_code": unofficial_code,
+  }
+
+
+def _account_value(account: Any, field: str) -> Any:
+  if isinstance(account, dict):
+    return account.get(field)
+  return getattr(account, field, None)
 
 
 async def _upsert_transactions(
@@ -296,6 +402,7 @@ async def _remove_transactions(
 
 
 def _transaction_values(transaction: Any) -> dict[str, Any]:
+  plaid_cat = _plaid_category_detailed(transaction)
   return {
     "transaction_id": _transaction_value(transaction, "transaction_id"),
     "account_id": _transaction_value(transaction, "account_id"),
@@ -316,7 +423,8 @@ def _transaction_values(transaction: Any) -> dict[str, Any]:
     "unofficial_currency_code": _transaction_value(
       transaction, "unofficial_currency_code"
     ),
-    "plaid_category_detailed": _plaid_category_detailed(transaction),
+    "plaid_category_detailed": plaid_cat,
+    "is_transfer": _is_transfer_category(plaid_cat),
   }
 
 

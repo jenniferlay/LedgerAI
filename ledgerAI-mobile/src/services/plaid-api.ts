@@ -19,6 +19,36 @@ const PublicTokenExchangeResponseSchema = z.object({
   sync_summary: SyncSummarySchema.optional(),
 });
 
+export const PlaidAccountSchema = z.object({
+  id: z.number(),
+  item_id: z.string(),
+  account_id: z.string(),
+  name: z.string(),
+  official_name: z.string().nullable().optional(),
+  type: z.string(),
+  subtype: z.string().nullable().optional(),
+  mask: z.string().nullable().optional(),
+  current_balance: z.number().nullable().optional(),
+  available_balance: z.number().nullable().optional(),
+  credit_limit: z.number().nullable().optional(),
+  iso_currency_code: z.string().nullable().optional(),
+  is_active: z.boolean(),
+});
+
+export type PlaidAccount = z.infer<typeof PlaidAccountSchema>;
+
+export const NetWorthSchema = z.object({
+  net_worth: z.number(),
+  total_assets: z.number(),
+  total_liabilities: z.number(),
+  depository_total: z.number(),
+  credit_total: z.number(),
+  currency: z.string().default('USD'),
+  account_count: z.number(),
+});
+
+export type NetWorth = z.infer<typeof NetWorthSchema>;
+
 const ErrorBodySchema = z.object({
   detail: z.union([z.string(), z.array(z.object({ msg: z.string() }))]),
 });
@@ -41,7 +71,7 @@ function getErrorMessage(body: unknown, status: number): string {
   return detail.map((item) => item.msg).join(' ') || fallback;
 }
 
-async function postPlaid(path: string, body?: object): Promise<unknown> {
+async function requestPlaid(path: string, method = 'GET', body?: object): Promise<unknown> {
   if (!API_BASE_URL) {
     throw new Error('Set EXPO_PUBLIC_API_URL to the backend API address before connecting a bank.');
   }
@@ -56,7 +86,7 @@ async function postPlaid(path: string, body?: object): Promise<unknown> {
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
-      method: 'POST',
+      method,
       headers: {
         Authorization: `Bearer ${token}`,
         ...(body ? { 'Content-Type': 'application/json' } : {}),
@@ -95,25 +125,57 @@ async function postPlaid(path: string, body?: object): Promise<unknown> {
 }
 
 export async function createLinkToken(): Promise<z.infer<typeof LinkTokenResponseSchema>> {
-  const json = await postPlaid('/plaid/link-token');
-
+  const json = await requestPlaid('/plaid/link-token', 'POST');
   const parsed = LinkTokenResponseSchema.safeParse(json);
   if (!parsed.success) {
     throw new Error('The server returned an invalid Link token response.');
   }
-
   return parsed.data;
 }
 
 export async function exchangePublicToken(
   publicToken: string,
 ): Promise<z.infer<typeof PublicTokenExchangeResponseSchema>> {
-  const json = await postPlaid('/plaid/exchange', { public_token: publicToken });
-
+  const json = await requestPlaid('/plaid/exchange', 'POST', { public_token: publicToken });
   const parsed = PublicTokenExchangeResponseSchema.safeParse(json);
   if (!parsed.success) {
     throw new Error('The server returned an invalid Plaid exchange response.');
   }
-
   return parsed.data;
+}
+
+export async function getAccounts(): Promise<PlaidAccount[]> {
+  const json = await requestPlaid('/plaid/accounts', 'GET');
+  const parsed = z.array(PlaidAccountSchema).safeParse(json);
+  if (!parsed.success) {
+    throw new Error('The server returned invalid account data.');
+  }
+  return parsed.data;
+}
+
+export async function getNetWorth(): Promise<NetWorth> {
+  const json = await requestPlaid('/plaid/accounts/net-worth', 'GET');
+  const parsed = NetWorthSchema.safeParse(json);
+  if (!parsed.success) {
+    throw new Error('The server returned invalid net worth data.');
+  }
+  return parsed.data;
+}
+
+export async function updateAccountStatus(
+  accountId: string,
+  isActive: boolean,
+): Promise<PlaidAccount> {
+  const json = await requestPlaid(`/plaid/accounts/${encodeURIComponent(accountId)}`, 'PATCH', {
+    is_active: isActive,
+  });
+  const parsed = PlaidAccountSchema.safeParse(json);
+  if (!parsed.success) {
+    throw new Error('The server returned invalid account update data.');
+  }
+  return parsed.data;
+}
+
+export async function disconnectItem(itemId: string): Promise<void> {
+  await requestPlaid(`/plaid/items/${encodeURIComponent(itemId)}`, 'DELETE');
 }

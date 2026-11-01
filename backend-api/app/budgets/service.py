@@ -69,6 +69,7 @@ def _spend_subquery(user_id: int, start: date, end: date):
 			PlaidItem.user_id == user_id,
 			PlaidTransaction.pending.is_(False),
 			PlaidTransaction.hidden.is_(False),
+			PlaidTransaction.is_transfer.is_(False),
 			PlaidTransaction.transaction_date >= start,
 			PlaidTransaction.transaction_date < end,
 		)

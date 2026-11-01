@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+
 class ExpenseCreate(BaseModel):
 	model_config = ConfigDict(extra="forbid")
 
@@ -18,6 +19,7 @@ class ExpenseCreate(BaseModel):
 		if self.amount == 0:
 			raise ValueError("Amount must not be zero")
 		return self
+
 
 class ExpenseResponse(BaseModel):
 	model_config = ConfigDict(from_attributes=True)
@@ -38,6 +40,16 @@ class ExpenseFeedItem(BaseModel):
 	merchant: str | None
 	description: str
 	categoryid: int | None = None
+	transaction_id: str | None = None
+	account_id: str | None = None
+	pending: bool | None = None
+	currency: str | None = None
+	is_transfer: bool = False
+	account_name: str | None = None
+	account_mask: str | None = None
+	account_type: str | None = None
+	account_subtype: str | None = None
+
 
 class ExpenseUpdate(BaseModel):
 	model_config = ConfigDict(extra="forbid")
