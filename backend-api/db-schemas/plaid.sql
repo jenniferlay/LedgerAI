@@ -7,7 +7,7 @@ CREATE TABLE plaid_items (
     item_id VARCHAR(255) NOT NULL UNIQUE,
     access_token TEXT NOT NULL,
     cursor TEXT,
-    sync_in_progress BOOLEAN NOT NULL DEFAULT FALSE,
+    sync_started_at TIMESTAMPTZ,
     requires_reauth BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -29,10 +29,13 @@ CREATE TABLE plaid_transactions (
     pending BOOLEAN NOT NULL,
     iso_currency_code VARCHAR(3),
     unofficial_currency_code VARCHAR(10),
-    raw_data JSONB NOT NULL,
+    plaid_category_detailed VARCHAR(100),
+    user_merchant VARCHAR(255),
+    user_note TEXT,
+    hidden BOOLEAN NOT NULL DEFAULT FALSE,
 
-    -- NULL until the categorizer service fills them in (both together).
-    -- Owner is the item's user or 0 (global). NULL rows are excluded from budgets.
+    -- User override only; NULL means use the stored Plaid category code.
+    -- Owner is the item's user or 0 (global).
     categoryid BIGINT,
     category_userid BIGINT,
 
@@ -52,8 +55,3 @@ CREATE TABLE plaid_transactions (
 
 CREATE INDEX ix_plaid_transactions_item_date
     ON plaid_transactions (plaid_item_id, transaction_date DESC, id DESC);
-
--- Work queue for the categorizer: small, only holds rows still waiting
-CREATE INDEX ix_plaid_transactions_uncategorized
-    ON plaid_transactions (plaid_item_id, id)
-    WHERE categoryid IS NULL;

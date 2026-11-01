@@ -3,11 +3,7 @@ from decimal import Decimal
 from typing import Any, Mapping
 
 from sqlalchemy import (
-	BigInteger,
-	Numeric,
 	and_,
-	case,
-	cast,
 	func,
 	or_,
 	select,
@@ -21,7 +17,11 @@ from app.budgets.models import Budget
 from app.budgets.schemas import BudgetCreate, BudgetUpdate
 from app.category.models import Category
 from app.expenses.models import Expense
-from app.plaid.models import PlaidItem, PlaidTransaction
+from app.plaid.models import (
+	PlaidItem,
+	PlaidTransaction,
+	plaid_effective_categoryid,
+)
 
 
 class CategoryNotFoundError(Exception):
@@ -43,45 +43,32 @@ def _month_bounds(month: date | None) -> tuple[date, date]:
 	return start, next_start
 
 
-def _expense_amount():
-	"""Signed dollars for a manual expense (dollars/cents are stored separately)."""
-	dollars = cast(Expense.amount_dollars, BigInteger)
-	cents = case(
-		(Expense.amount_dollars < 0, dollars * 100 - Expense.amount_cents),
-		else_=dollars * 100 + Expense.amount_cents,
-	)
-	return cast(cents, Numeric(14, 2)) / 100
-
-
 def _spend_subquery(user_id: int, start: date, end: date):
-	"""All of the user's spending in [start, end) from both sources.
-
-	Negative amounts are money out. They're flipped so spend comes out positive.
-	"""
-	manual_amount = _expense_amount()
+	"""All of the user's signed transaction amounts in [start, end)."""
 	manual = select(
 		Expense.categoryid.label("categoryid"),
 		Expense.category_userid.label("category_userid"),
-		(-manual_amount).label("amount"),
+		Expense.amount.label("amount"),
 	).where(
 		Expense.userid == user_id,
 		Expense.spent_on >= start,
 		Expense.spent_on < end,
-		manual_amount < 0,
 	)
 
 	# Pending rows are skipped because they re-post as new rows.
 	plaid = (
 		select(
-			PlaidTransaction.categoryid.label("categoryid"),
-			PlaidTransaction.category_userid.label("category_userid"),
-			(-PlaidTransaction.amount).label("amount"),
+			plaid_effective_categoryid().label("categoryid"),
+			func.coalesce(PlaidTransaction.category_userid, 0).label(
+				"category_userid"
+			),
+			PlaidTransaction.amount.label("amount"),
 		)
 		.join(PlaidItem, PlaidTransaction.plaid_item_id == PlaidItem.id)
 		.where(
 			PlaidItem.user_id == user_id,
 			PlaidTransaction.pending.is_(False),
-			PlaidTransaction.amount < 0,
+			PlaidTransaction.hidden.is_(False),
 			PlaidTransaction.transaction_date >= start,
 			PlaidTransaction.transaction_date < end,
 		)
@@ -301,7 +288,7 @@ async def get_budget(
 async def _uncategorized_spent(
 	db: AsyncSession, user_id: int, start: date, end: date
 ) -> Decimal:
-	"""Spending with no category yet (e.g. Plaid rows awaiting the categorizer)."""
+	"""Signed transaction amounts with no effective category."""
 	spend = _spend_subquery(user_id, start, end)
 	total = await db.scalar(
 		select(func.coalesce(func.sum(spend.c.amount), 0)).where(

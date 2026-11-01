@@ -5,8 +5,18 @@ const LinkTokenResponseSchema = z.object({
   link_token: z.string().min(1),
 });
 
+const SyncSummarySchema = z.object({
+  accounts_imported: z.number().default(0),
+  transactions_added: z.number().default(0),
+  transactions_updated: z.number().default(0),
+  transactions_removed: z.number().default(0),
+  status: z.enum(['success', 'already_syncing', 'not_found', 'requires_reauth', 'ignored', 'failed']),
+  failure_reason: z.string().nullable().optional(),
+});
+
 const PublicTokenExchangeResponseSchema = z.object({
   item_id: z.string().min(1),
+  sync_summary: SyncSummarySchema.optional(),
 });
 
 const ErrorBodySchema = z.object({

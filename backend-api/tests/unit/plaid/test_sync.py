@@ -1,9 +1,11 @@
 from datetime import date
+from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import plaid
 from cryptography.fernet import Fernet
+from sqlalchemy.dialects import postgresql
 
 import pytest
 
@@ -29,6 +31,10 @@ def _transaction(
     pending=pending,
     iso_currency_code="USD",
     unofficial_currency_code=None,
+    personal_finance_category=SimpleNamespace(
+      primary="FOOD_AND_DRINK",
+      detailed="FOOD_AND_DRINK_COFFEE",
+    ),
   )
 
 
@@ -95,9 +101,23 @@ async def test_sync_plaid_item_fetches_all_pages_and_persists_cursor(
     call.args[0] for call in plaid_client.transactions_sync.call_args_list
   ]
   assert requests[0].access_token == "access-secret"
+  assert requests[0].options.include_personal_finance_category is True
+  version = requests[0].options.personal_finance_category_version
+  assert getattr(version, "value", version) == "v2"
   assert "cursor" not in requests[0]
   assert requests[1].cursor == "cursor-1"
-  assert db.add.call_count == 2
+  upserts = [
+    call.args[0]
+    for call in db.execute.await_args_list
+    if "ON CONFLICT"
+    in str(call.args[0].compile(dialect=postgresql.dialect()).string)
+  ]
+  assert len(upserts) == 2
+  upsert_sql = str(upserts[0].compile(dialect=postgresql.dialect()))
+  assert "plaid_category_detailed" in upsert_sql
+  assert "user_merchant" not in upsert_sql
+  assert "user_note" not in upsert_sql
+  assert "hidden" not in upsert_sql
   assert db.commit.await_count == 4
 
 
@@ -122,7 +142,6 @@ async def test_sync_plaid_item_replaces_pending_transaction(
     transaction_date=date(2026, 9, 30),
     name="Pending coffee",
     pending=True,
-    raw_data={},
   )
   posted = _transaction(
     "posted-transaction",
@@ -136,18 +155,38 @@ async def test_sync_plaid_item_replaces_pending_transaction(
     next_cursor="cursor-1",
     has_more=False,
   )
-  db = _session(item=item, scalar_results=[None, pending])
+  db = _session(item=item, scalar_results=[])
   monkeypatch.setattr(service, "get_access_token_cipher", lambda: Fernet(cipher))
   monkeypatch.setattr(service, "get_plaid_client", lambda: plaid_client)
 
   summary = await service.sync_plaid_item(db, "item-123")
 
   assert summary.transactions_added == 1
-  assert pending.transaction_id == "posted-transaction"
-  assert pending.pending_transaction_id == "pending-transaction"
-  assert pending.pending is False
-  db.add.assert_not_called()
-  db.delete.assert_not_awaited()
+  statements = [call.args[0] for call in db.execute.await_args_list]
+  pending_rename = next(
+    statement for statement in statements
+    if "UPDATE plaid_transactions"
+    in str(statement.compile(dialect=postgresql.dialect()))
+  )
+  assert "NOT (EXISTS" in str(
+    pending_rename.compile(dialect=postgresql.dialect())
+  ).upper()
+  upsert = next(
+    statement for statement in statements
+    if "ON CONFLICT"
+    in str(statement.compile(dialect=postgresql.dialect()).string)
+  )
+  assert "ON CONFLICT ON CONSTRAINT uq_plaid_transactions_item_transaction" in str(
+    upsert.compile(dialect=postgresql.dialect())
+  )
+  assert pending.transaction_id == "pending-transaction"
+
+
+def test_transaction_values_keep_plaid_sign_and_detailed_category() -> None:
+  values = service._transaction_values(_transaction("transaction-123"))
+
+  assert values["amount"] == Decimal("12.34")
+  assert values["plaid_category_detailed"] == "FOOD_AND_DRINK_COFFEE"
 
 
 @pytest.mark.asyncio

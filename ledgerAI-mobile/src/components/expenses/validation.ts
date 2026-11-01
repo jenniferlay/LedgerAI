@@ -137,18 +137,17 @@ export function validateExpenseForm(values: ExpenseFormValues): {
 
   const parsedAmount = parseAmount(values.amount)!;
   const isExpense = values.type === 'expense';
-  const multiplier = isExpense ? -1 : 1;
+  const multiplier = isExpense ? 1 : -1;
 
   return {
     isValid: true,
     errors: {},
     payload: {
-      amount_dollars: parsedAmount.dollars * multiplier,
-      amount_cents: parsedAmount.cents,
+      amount: (parsedAmount.dollars + parsedAmount.cents / 100) * multiplier,
       note: values.note.trim(),
       merchant: values.merchant.trim() ? values.merchant.trim() : null,
       spent_on: values.spentOn.trim(),
-      categoryid: values.categoryId ?? 1,
+      categoryid: values.categoryId,
     },
   };
 }

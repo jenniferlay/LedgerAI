@@ -8,9 +8,11 @@ from plaid.model.country_code import CountryCode
 from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
 from plaid.model.link_token_create_request import LinkTokenCreateRequest
 from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
+from plaid.model.personal_finance_category_version import PersonalFinanceCategoryVersion
 from plaid.model.products import Products
 from plaid.model.transactions_sync_request import TransactionsSyncRequest
-from sqlalchemy import select, update
+from plaid.model.transactions_sync_request_options import TransactionsSyncRequestOptions
+from sqlalchemy import delete, exists, func, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
@@ -109,7 +111,6 @@ async def exchange_public_token(
   statement = statement.on_conflict_do_update(
     index_elements=[PlaidItem.item_id],
     set_={
-      "user_id": user_id,
       "access_token": encrypted_access_token,
       "requires_reauth": False,
     },
@@ -139,8 +140,12 @@ async def sync_plaid_item(
 
   lock_result = await db.execute(
     update(PlaidItem)
-    .where(PlaidItem.id == item.id, PlaidItem.sync_in_progress.is_(False))
-    .values(sync_in_progress=True)
+    .where(
+      PlaidItem.id == item.id,
+      (PlaidItem.sync_started_at.is_(None))
+      | (PlaidItem.sync_started_at < func.now() - text("interval '15 minutes'")),
+    )
+    .values(sync_started_at=func.now())
     .returning(PlaidItem.id)
   )
   if lock_result.scalar_one_or_none() is None:
@@ -160,7 +165,13 @@ async def sync_plaid_item(
       request_values: dict[str, Any] = {"access_token": access_token}
       if cursor is not None:
         request_values["cursor"] = cursor
-      request = TransactionsSyncRequest(**request_values)
+      request = TransactionsSyncRequest(
+        **request_values,
+        options=TransactionsSyncRequestOptions(
+          include_personal_finance_category=True,
+          personal_finance_category_version=PersonalFinanceCategoryVersion("v2"),
+        ),
+      )
       try:
         response = await run_in_threadpool(plaid_client.transactions_sync, request)
       except plaid.ApiException as exc:
@@ -182,16 +193,14 @@ async def sync_plaid_item(
           )
         raise PlaidApiError("Unable to sync Plaid transactions") from exc
 
-      for transaction in response.added:
-        await _upsert_transaction(db, item.id, transaction)
-        summary.transactions_added += 1
-      for transaction in response.modified:
-        await _upsert_transaction(db, item.id, transaction)
-        summary.transactions_updated += 1
-      for transaction in response.removed:
-        summary.transactions_removed += await _remove_transaction(
-          db, item.id, transaction
-        )
+      added = list(response.added)
+      modified = list(response.modified)
+      await _upsert_transactions(db, item.id, [*added, *modified])
+      summary.transactions_added += len(added)
+      summary.transactions_updated += len(modified)
+      summary.transactions_removed += await _remove_transactions(
+        db, item.id, response.removed
+      )
 
       cursor = response.next_cursor
       await db.execute(
@@ -207,83 +216,93 @@ async def sync_plaid_item(
     await db.execute(
       update(PlaidItem)
       .where(PlaidItem.id == item.id)
-      .values(sync_in_progress=False)
+      .values(sync_started_at=None)
     )
     await db.commit()
 
 
-async def _upsert_transaction(
+async def _upsert_transactions(
   db: AsyncSession,
   plaid_item_id: int,
-  transaction: Any,
+  transactions: list[Any],
 ) -> None:
-  transaction_id = _transaction_value(transaction, "transaction_id")
-  pending_transaction_id = _transaction_value(transaction, "pending_transaction_id")
-  existing = await db.scalar(
-    select(PlaidTransaction).where(
-      PlaidTransaction.plaid_item_id == plaid_item_id,
-      PlaidTransaction.transaction_id == transaction_id,
-    )
-  )
+  values_by_id: dict[str, dict[str, Any]] = {}
+  for transaction in transactions:
+    values = _transaction_values(transaction)
+    values_by_id[values["transaction_id"]] = values
 
-  pending = None
-  if pending_transaction_id:
-    pending = await db.scalar(
-      select(PlaidTransaction).where(
+  values = list(values_by_id.values())
+  for row in values:
+    pending_transaction_id = row["pending_transaction_id"]
+    transaction_id = row["transaction_id"]
+    if pending_transaction_id is None:
+      continue
+    already_posted = exists(
+      select(1).where(
+        PlaidTransaction.plaid_item_id == plaid_item_id,
+        PlaidTransaction.transaction_id == transaction_id,
+      )
+    )
+    await db.execute(
+      update(PlaidTransaction)
+      .where(
         PlaidTransaction.plaid_item_id == plaid_item_id,
         PlaidTransaction.transaction_id == pending_transaction_id,
+        ~already_posted,
+      )
+      .values(transaction_id=transaction_id)
+    )
+
+  for offset in range(0, len(values), 500):
+    chunk = values[offset : offset + 500]
+    insert_stmt = insert(PlaidTransaction).values(
+      [{"plaid_item_id": plaid_item_id, **row} for row in chunk]
+    )
+    update_values = {
+      column: insert_stmt.excluded[column]
+      for column in chunk[0]
+      if column != "transaction_id"
+    }
+    update_values["updated_at"] = func.now()
+    await db.execute(
+      insert_stmt.on_conflict_do_update(
+        constraint="uq_plaid_transactions_item_transaction",
+        set_=update_values,
       )
     )
 
-  if existing is not None and pending is not None and existing is not pending:
-    await db.delete(pending)
-  elif existing is None and pending is not None:
-    existing = pending
 
-  values = _transaction_values(transaction)
-  if existing is None:
-    db.add(PlaidTransaction(plaid_item_id=plaid_item_id, **values))
-    return
-
-  for field, value in values.items():
-    setattr(existing, field, value)
-
-
-async def _remove_transaction(
+async def _remove_transactions(
   db: AsyncSession,
   plaid_item_id: int,
-  transaction: Any,
+  transactions: list[Any],
 ) -> int:
-  existing = await db.scalar(
-    select(PlaidTransaction).where(
-      PlaidTransaction.plaid_item_id == plaid_item_id,
-      PlaidTransaction.transaction_id
-      == _transaction_value(transaction, "transaction_id"),
-    )
-  )
-  if existing is None:
+  transaction_ids = [
+    transaction_id
+    for transaction in transactions
+    if (transaction_id := _transaction_value(transaction, "transaction_id"))
+  ]
+  if not transaction_ids:
     return 0
-  await db.delete(existing)
-  return 1
+  result = await db.scalars(
+    delete(PlaidTransaction)
+    .where(
+      PlaidTransaction.plaid_item_id == plaid_item_id,
+      PlaidTransaction.transaction_id.in_(transaction_ids),
+    )
+    .returning(PlaidTransaction.id)
+  )
+  return len(result.all())
 
 
 def _transaction_values(transaction: Any) -> dict[str, Any]:
-  raw_data = _transaction_value(transaction, "to_dict")
-  if callable(raw_data):
-    raw_data = raw_data()
-  if raw_data is None:
-    raw_data = transaction
-  if not isinstance(raw_data, dict):
-    raw_data = vars(raw_data)
-  raw_data = json.loads(json.dumps(raw_data, default=str))
-
   return {
     "transaction_id": _transaction_value(transaction, "transaction_id"),
     "account_id": _transaction_value(transaction, "account_id"),
     "pending_transaction_id": _transaction_value(
       transaction, "pending_transaction_id"
     ),
-    "amount": -Decimal(str(_transaction_value(transaction, "amount"))),
+    "amount": Decimal(str(_transaction_value(transaction, "amount"))),
     "transaction_date": _transaction_date(
       _transaction_value(transaction, "date")
     ),
@@ -297,8 +316,20 @@ def _transaction_values(transaction: Any) -> dict[str, Any]:
     "unofficial_currency_code": _transaction_value(
       transaction, "unofficial_currency_code"
     ),
-    "raw_data": raw_data,
+    "plaid_category_detailed": _plaid_category_detailed(transaction),
   }
+
+
+def _plaid_category_detailed(transaction: Any) -> str | None:
+  pfc = _transaction_value(transaction, "personal_finance_category")
+  if pfc is None:
+    return None
+  detailed = (
+    pfc.get("detailed")
+    if isinstance(pfc, dict)
+    else getattr(pfc, "detailed", None)
+  )
+  return detailed if isinstance(detailed, str) else None
 
 
 def _transaction_value(transaction: Any, field: str) -> Any:

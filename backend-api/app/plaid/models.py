@@ -1,7 +1,5 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any
-
 from sqlalchemy import (
   BigInteger,
   Boolean,
@@ -13,10 +11,11 @@ from sqlalchemy import (
   Text,
   UniqueConstraint,
   func,
+  select,
 )
-from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.category.models import Category
 from app.db.base import Base
 
 
@@ -30,9 +29,7 @@ class PlaidItem(Base):
   item_id: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
   access_token: Mapped[str] = mapped_column(Text, nullable=False)
   cursor: Mapped[str | None] = mapped_column(Text)
-  sync_in_progress: Mapped[bool] = mapped_column(
-    Boolean, nullable=False, default=False, server_default="false"
-  )
+  sync_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
   requires_reauth: Mapped[bool] = mapped_column(
     Boolean, nullable=False, default=False, server_default="false"
   )
@@ -66,9 +63,23 @@ class PlaidTransaction(Base):
   pending: Mapped[bool] = mapped_column(Boolean, nullable=False)
   iso_currency_code: Mapped[str | None] = mapped_column(String(3))
   unofficial_currency_code: Mapped[str | None] = mapped_column(String(10))
-  raw_data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+  plaid_category_detailed: Mapped[str | None] = mapped_column(String(100))
+  user_merchant: Mapped[str | None] = mapped_column(String(255))
+  user_note: Mapped[str | None] = mapped_column(Text)
+  hidden: Mapped[bool] = mapped_column(
+    Boolean, nullable=False, server_default="false"
+  )
   updated_at: Mapped[datetime] = mapped_column(
     DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
   )
   categoryid: Mapped[int | None] = mapped_column(BigInteger)
   category_userid: Mapped[int | None] = mapped_column(BigInteger)
+
+
+def plaid_effective_categoryid():
+  mapped = (
+    select(Category.categoryid)
+    .where(Category.plaid_code == PlaidTransaction.plaid_category_detailed)
+    .scalar_subquery()
+  )
+  return func.coalesce(PlaidTransaction.categoryid, mapped)

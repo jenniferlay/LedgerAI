@@ -41,7 +41,7 @@ export default function AddExpenseScreen({
     merchant: '',
     note: '',
     spentOn: getTodayIsoDate(),
-    categoryId: 1,
+    categoryId: null,
   });
   const [errors, setErrors] = useState<ExpenseFormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -86,9 +86,7 @@ export default function AddExpenseScreen({
       if (onDone) {
         onDone(result.payload);
       } else {
-        const formattedAmount = `$${result.payload.amount_dollars}.${String(
-          result.payload.amount_cents,
-        ).padStart(2, '0')}`;
+        const formattedAmount = `$${Math.abs(result.payload.amount).toFixed(2)}`;
         Alert.alert(
           'Expense Saved',
           `Successfully saved expense of ${formattedAmount} for "${result.payload.note}".`,

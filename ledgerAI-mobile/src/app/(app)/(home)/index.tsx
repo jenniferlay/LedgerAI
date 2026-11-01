@@ -8,6 +8,7 @@ import { useAuth } from '@/context/auth';
 import PrimaryActionButton from '@/components/shared/PrimaryActionButton';
 import type { LinkExit } from 'react-native-plaid-link-sdk';
 import { createLinkToken, exchangePublicToken } from '@/services/plaid-api';
+import { invalidateExpenseCache } from '@/services/expenses-api';
 import RecentActivity from '@/components/RecentActivity';
 import NetWorthCard from '@/components/NetWorthCard';
 import BudgetCard from '@/components/BudgetCard';
@@ -114,9 +115,17 @@ export default function AppHomeScreen() {
   const handlePlaidSuccess = async (publicToken: string) => {
     setIsExchangingBank(true);
     try {
-      await exchangePublicToken(publicToken);
-      setLinkMessage('Bank connection completed.');
-      setLinkError(null);
+      const response = await exchangePublicToken(publicToken);
+      if (response.sync_summary?.status === 'failed') {
+        setLinkError(
+          'Bank connected, but sync failed: ' + (response.sync_summary.failure_reason || 'unknown error'),
+        );
+        setLinkMessage(null);
+      } else {
+        setLinkMessage('Bank connection completed.');
+        setLinkError(null);
+      }
+      invalidateExpenseCache();
     } catch (error) {
       setLinkError(error instanceof Error ? error.message : 'Could not connect to Plaid. Please try again.');
       setLinkMessage(null);

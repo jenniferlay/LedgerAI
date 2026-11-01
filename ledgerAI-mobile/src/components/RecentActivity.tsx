@@ -51,7 +51,7 @@ function formatActivityAmount(amount: number): string {
 }
 
 function toActivityItem(item: ExpenseFeedItem): ActivityItem {
-  const isIncome = item.amount > 0;
+  const isIncome = item.amount < 0;
 
   return {
     id: `${item.source}-${item.id}`,
@@ -114,7 +114,10 @@ function ActivityCard({ item, router }: { item: ActivityItem; router: any }) {
             merchant: item.merchant,
             note: item.note ?? '',
             spentOn: item.rawDate,
-            categoryId: String(item.categoryId ?? 1),
+            categoryId:
+              item.categoryId === null || item.categoryId === undefined
+                ? ''
+                : String(item.categoryId),
           },
         });
       }}

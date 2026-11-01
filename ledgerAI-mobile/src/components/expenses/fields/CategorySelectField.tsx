@@ -1,25 +1,61 @@
-import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import theme from '@/constants/theme';
-import {
-  DEFAULT_EXPENSE_CATEGORIES,
-  type ExpenseCategoryOption,
-} from '../types';
+import { getCategories } from '@/services/categories-api';
+import type { ExpenseCategoryOption, IconName } from '../types';
 
 const { colors, spacing, borderRadius, typography } = theme;
 
 interface Props {
   selectedId: number | null;
-  onSelect: (id: number) => void;
+  onSelect: (id: number | null) => void;
   categories?: ExpenseCategoryOption[];
 }
 
 export default function CategorySelectField({
   selectedId,
   onSelect,
-  categories = DEFAULT_EXPENSE_CATEGORIES,
+  categories,
 }: Props) {
+  const [categoryOptions, setCategoryOptions] = useState(categories ?? []);
+
+  useEffect(() => {
+    if (categories !== undefined) {
+      setCategoryOptions(categories);
+      return;
+    }
+
+    let active = true;
+    getCategories()
+      .then((items) => {
+        if (active) {
+          setCategoryOptions(
+            items.map((category) => ({
+              id: category.categoryid,
+              name: category.name,
+              icon:
+                category.icon && category.icon in MaterialIcons.glyphMap
+                  ? (category.icon as IconName)
+                  : 'label',
+            })),
+          );
+        }
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          Alert.alert(
+            'Unable to Load Categories',
+            error instanceof Error ? error.message : 'An unexpected error occurred.',
+          );
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [categories]);
+
   return (
     <View style={styles.wrapper}>
       <Text style={styles.label}>Category</Text>
@@ -28,7 +64,27 @@ export default function CategorySelectField({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollList}
       >
-        {categories.map((category) => {
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: selectedId === null }}
+          onPress={() => onSelect(null)}
+          style={[styles.chip, selectedId === null && styles.chipSelected]}
+        >
+          <MaterialIcons
+            name="label"
+            size={16}
+            color={selectedId === null ? colors.onPrimaryContainer : colors.onSurfaceVariant}
+          />
+          <Text
+            style={[
+              styles.chipText,
+              selectedId === null && styles.chipTextSelected,
+            ]}
+          >
+            Uncategorized
+          </Text>
+        </Pressable>
+        {categoryOptions.map((category) => {
           const isSelected = selectedId === category.id;
           return (
             <Pressable

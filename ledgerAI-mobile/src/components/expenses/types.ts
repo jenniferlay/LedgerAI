@@ -29,23 +29,9 @@ export interface ExpenseFormErrors {
 }
 
 export interface ExpensePayload {
-  amount_dollars: number;
-  amount_cents: number;
+  amount: number;
   merchant: string | null;
   note: string;
   spent_on: string;
   categoryid: number | null;
 }
-
-export const DEFAULT_EXPENSE_CATEGORIES: ExpenseCategoryOption[] = [
-  { id: 1, name: 'General', icon: 'label' },
-  { id: 2, name: 'Food & Dining', icon: 'restaurant' },
-  { id: 3, name: 'Groceries', icon: 'shopping-cart' },
-  { id: 4, name: 'Transport', icon: 'directions-car' },
-  { id: 5, name: 'Housing', icon: 'home' },
-  { id: 6, name: 'Utilities', icon: 'bolt' },
-  { id: 7, name: 'Health', icon: 'favorite' },
-  { id: 8, name: 'Entertainment', icon: 'movie' },
-  { id: 9, name: 'Shopping', icon: 'shopping-bag' },
-  { id: 10, name: 'Travel', icon: 'flight' },
-];

@@ -2,47 +2,55 @@ from datetime import date
 from typing import Any, Mapping
 
 from sqlalchemy import (
-	Boolean,
 	BigInteger,
-	Numeric,
 	String,
-	case,
-	cast,
+	Boolean,
 	func,
 	literal,
 	select,
+	cast,
 	union_all,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.expenses.models import Expense
-from app.category.models import Category
-from app.expenses.schemas import ExpenseCreate
-from app.plaid.models import PlaidItem, PlaidTransaction
+from app.category.service import get_category_owner
+from app.expenses.schemas import ExpenseCreate, ExpenseUpdate
+from app.plaid.models import (
+	PlaidItem,
+	PlaidTransaction,
+	plaid_effective_categoryid,
+)
 
+
+class CategoryNotFoundError(Exception):
+	pass
+
+
+class PlaidExpenseFieldsError(Exception):
+	pass
 
 
 def _escape_like_term(value: str) -> str:
 	return value.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
-
 async def create_expense(
 	db: AsyncSession, user_id: int, data: ExpenseCreate
 ) -> Expense:
-	expense = Expense(userid=user_id, **data.model_dump())
+	values = data.model_dump()
+	if values["spent_on"] is None:
+		values.pop("spent_on")
+	expense = Expense(userid=user_id, **values)
 	if data.categoryid is not None:
-		expense.category_userid = (
-			select(Category.userid)
-			.where(Category.categoryid == data.categoryid)
-			.scalar_subquery()
-		)
+		owner = await get_category_owner(db, user_id, data.categoryid)
+		if owner is None:
+			raise CategoryNotFoundError
+		expense.category_userid = owner
 	db.add(expense)
 	await db.commit()
 	await db.refresh(expense)
 	return expense
-
-
 
 async def list_expenses(
 	db: AsyncSession,
@@ -92,19 +100,7 @@ async def list_expense_feed(
 	manual_query = select(
 		literal("manual").label("source"),
 		Expense.expenseid.label("id"),
-		(
-			cast(
-				case(
-					(
-						Expense.amount_dollars < 0,
-						Expense.amount_dollars * 100 - Expense.amount_cents,
-					),
-					else_=Expense.amount_dollars * 100 + Expense.amount_cents,
-				),
-				Numeric(14, 2),
-			)
-			/ 100
-		).label("amount"),
+		Expense.amount.label("amount"),
 		Expense.spent_on.label("spent_on"),
 		Expense.merchant.label("merchant"),
 		Expense.note.label("description"),
@@ -122,11 +118,15 @@ async def list_expense_feed(
 			PlaidTransaction.amount.label("amount"),
 			PlaidTransaction.transaction_date.label("spent_on"),
 			func.coalesce(
+				PlaidTransaction.user_merchant,
 				PlaidTransaction.merchant_name,
 				PlaidTransaction.name,
 			).label("merchant"),
-			PlaidTransaction.name.label("description"),
-			literal(None, type_=BigInteger).label("categoryid"),
+			func.coalesce(
+				PlaidTransaction.user_note,
+				PlaidTransaction.name,
+			).label("description"),
+			plaid_effective_categoryid().label("categoryid"),
 			PlaidTransaction.transaction_id.label("transaction_id"),
 			PlaidTransaction.account_id.label("account_id"),
 			PlaidTransaction.pending.label("pending"),
@@ -136,7 +136,7 @@ async def list_expense_feed(
 			).label("currency"),
 		)
 		.join(PlaidItem, PlaidTransaction.plaid_item_id == PlaidItem.id)
-		.where(PlaidItem.user_id == user_id)
+		.where(PlaidItem.user_id == user_id, PlaidTransaction.hidden.is_(False))
 	)
 
 	if start_date is not None:
@@ -147,7 +147,9 @@ async def list_expense_feed(
 		plaid_query = plaid_query.where(PlaidTransaction.transaction_date <= end_date)
 	if categoryid is not None:
 		manual_query = manual_query.where(Expense.categoryid == categoryid)
-		plaid_query = plaid_query.where(False)
+		plaid_query = plaid_query.where(
+			plaid_effective_categoryid() == categoryid
+		)
 	if merchant is not None:
 		escaped_merchant = _escape_like_term(merchant)
 		search_term = f"%{escaped_merchant}%"
@@ -156,6 +158,7 @@ async def list_expense_feed(
 		)
 		plaid_query = plaid_query.where(
 			func.coalesce(
+				PlaidTransaction.user_merchant,
 				PlaidTransaction.merchant_name,
 				PlaidTransaction.name,
 			).ilike(search_term, escape="\\")
@@ -187,7 +190,7 @@ async def update_expense_item(
 	user_id: int,
 	source: str,
 	item_id: int,
-	data: Any,
+	data: ExpenseUpdate,
 ) -> dict[str, Any] | None:
 	if source == "manual":
 		expense = await db.get(Expense, item_id)
@@ -195,22 +198,20 @@ async def update_expense_item(
 			return None
 
 		if data.amount is not None:
-			total_cents = round(data.amount * 100)
-			sign = -1 if total_cents < 0 else 1
-			abs_cents = abs(total_cents)
-			expense.amount_dollars = (abs_cents // 100) * sign
-			expense.amount_cents = abs_cents % 100
+			expense.amount = data.amount
 		if data.spent_on is not None:
 			expense.spent_on = data.spent_on
 		if data.merchant is not None:
 			expense.merchant = data.merchant
 		if data.categoryid is not None:
+			owner = await get_category_owner(db, user_id, data.categoryid)
+			if owner is None:
+				raise CategoryNotFoundError
 			expense.categoryid = data.categoryid
-			expense.category_userid = (
-				select(Category.userid)
-				.where(Category.categoryid == data.categoryid)
-				.scalar_subquery()
-			)
+			expense.category_userid = owner
+		elif "categoryid" in data.model_fields_set:
+			expense.categoryid = None
+			expense.category_userid = None
 		if data.description is not None:
 			expense.note = data.description
 
@@ -220,11 +221,7 @@ async def update_expense_item(
 		return {
 			"source": "manual",
 			"id": expense.expenseid,
-			"amount": (
-				float(expense.amount_dollars * 100 - expense.amount_cents) / 100.0
-				if expense.amount_dollars < 0
-				else float(expense.amount_dollars * 100 + expense.amount_cents) / 100.0
-			),
+			"amount": float(expense.amount),
 			"spent_on": expense.spent_on,
 			"merchant": expense.merchant,
 			"description": expense.note,
@@ -239,26 +236,41 @@ async def update_expense_item(
 		if not item or item.user_id != user_id:
 			return None
 
-		if data.amount is not None:
-			tx.amount = data.amount
-		if data.spent_on is not None:
-			tx.transaction_date = data.spent_on
-		if data.merchant is not None:
-			tx.merchant_name = data.merchant
-		if data.description is not None:
-			tx.name = data.description
+		if {"amount", "spent_on"} & data.model_fields_set:
+			raise PlaidExpenseFieldsError
+		if "merchant" in data.model_fields_set:
+			tx.user_merchant = data.merchant
+		if "description" in data.model_fields_set:
+			tx.user_note = data.description
+		if "categoryid" in data.model_fields_set:
+			if data.categoryid is None:
+				tx.categoryid = None
+				tx.category_userid = None
+			else:
+				owner = await get_category_owner(db, user_id, data.categoryid)
+				if owner is None:
+					raise CategoryNotFoundError
+				tx.categoryid = data.categoryid
+				tx.category_userid = owner
 
 		await db.commit()
 		await db.refresh(tx)
+		categoryid = await db.scalar(
+			select(plaid_effective_categoryid()).where(PlaidTransaction.id == tx.id)
+		)
 
 		return {
 			"source": "plaid",
 			"id": tx.id,
 			"amount": float(tx.amount),
 			"spent_on": tx.transaction_date,
-			"merchant": tx.merchant_name or tx.name,
-			"description": tx.name,
-			"categoryid": None,
+			"merchant": (
+				tx.user_merchant
+				if tx.user_merchant is not None
+				else tx.merchant_name or tx.name
+			),
+			"description": tx.user_note if tx.user_note is not None else tx.name,
+			"categoryid": categoryid,
 		}
 
 	return None
@@ -285,7 +297,7 @@ async def delete_expense_item(
 		item = await db.get(PlaidItem, tx.plaid_item_id)
 		if not item or item.user_id != user_id:
 			return False
-		await db.delete(tx)
+		tx.hidden = True
 		await db.commit()
 		return True
 

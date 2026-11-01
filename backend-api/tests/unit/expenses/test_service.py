@@ -10,7 +10,10 @@ from app.category.models import Category
 from app.expenses.models import Expense
 from app.expenses.schemas import ExpenseCreate, ExpenseUpdate
 from app.expenses.service import (
+	CategoryNotFoundError,
+	PlaidExpenseFieldsError,
 	create_expense,
+	delete_expense_item,
 	list_expense_feed,
 	list_expenses,
 	update_expense_item,
@@ -31,19 +34,19 @@ def db() -> MagicMock:
 async def test_create_expense_persists_expense_and_category_owner(db: MagicMock) -> None:
 	data = ExpenseCreate(
 		categoryid=42,
-		amount_dollars=12,
-		amount_cents=34,
+		amount=Decimal("12.34"),
 		note="Lunch",
 		merchant="Cafe",
 	)
+	db.scalar = AsyncMock(return_value=0)
 
 	result = await create_expense(db, user_id=7, data=data)
 
 	expected_fields = {
 		"userid": 7,
 		"categoryid": 42,
-		"amount_dollars": 12,
-		"amount_cents": 34,
+		"category_userid": 0,
+		"amount": Decimal("12.34"),
 		"note": "Lunch",
 		"merchant": "Cafe",
 	}
@@ -60,7 +63,7 @@ async def test_create_expense_without_category_skips_category_owner_lookup(
 ) -> None:
 	data = ExpenseCreate(
 		categoryid=None,
-		amount_dollars=5,
+		amount=Decimal("5.00"),
 		note="Cash purchase",
 	)
 
@@ -104,8 +107,7 @@ async def test_list_expenses_scopes_and_filters_results(db: MagicMock) -> None:
 		expenseid=1,
 		userid=7,
 		categoryid=42,
-		amount_dollars=12,
-		amount_cents=34,
+		amount=Decimal("12.34"),
 		note="Lunch",
 		merchant="Cafe",
 		spent_on=date(2026, 5, 3),
@@ -217,7 +219,7 @@ async def test_list_expense_feed_combines_user_expenses_and_plaid_transactions(
 
 
 @pytest.mark.asyncio
-async def test_list_expense_feed_category_filter_excludes_plaid_transactions(
+async def test_list_expense_feed_category_filter_includes_mapped_plaid_transactions(
 	db: MagicMock,
 ) -> None:
 	result = MagicMock()
@@ -230,30 +232,65 @@ async def test_list_expense_feed_category_filter_excludes_plaid_transactions(
 	compiled = statement.compile(dialect=postgresql.dialect())
 	assert "expenses.categoryid =" in str(compiled)
 	assert "plaid_transactions.plaid_item_id" in str(compiled)
-	assert "false" in str(compiled).lower()
+	assert "categories.plaid_code" in str(compiled)
+	assert "plaid_transactions.categoryid" in str(compiled)
+	assert "WHERE false" not in str(compiled).lower()
 
 
 @pytest.mark.asyncio
 async def test_create_expense_income_negative_dollars(db: MagicMock) -> None:
 	data = ExpenseCreate(
-		categoryid=1,
-		amount_dollars=-100,
-		amount_cents=50,
+		categoryid=None,
+		amount=Decimal("-100.50"),
 		note="Paycheck",
 	)
 
 	result = await create_expense(db, user_id=7, data=data)
 
-	assert result.amount_dollars == -100
-	assert result.amount_cents == 50
+	assert result.amount == Decimal("-100.50")
 	assert result.note == "Paycheck"
 
 
 @pytest.mark.asyncio
-async def test_update_expense_item_plaid_preserves_sign(db: MagicMock) -> None:
+async def test_create_expense_rejects_another_users_category(db: MagicMock) -> None:
+	db.scalar = AsyncMock(return_value=None)
+	data = ExpenseCreate(
+		categoryid=42,
+		amount=Decimal("0.50"),
+		note="Cash purchase",
+	)
+
+	with pytest.raises(CategoryNotFoundError):
+		await create_expense(db, user_id=7, data=data)
+
+	db.add.assert_not_called()
+	db.commit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_create_expense_accepts_small_signed_amounts_without_category(
+	db: MagicMock,
+) -> None:
+	for amount in (Decimal("0.50"), Decimal("-0.25")):
+		expense = await create_expense(
+			db,
+			user_id=7,
+			data=ExpenseCreate(amount=amount, note="Small transaction"),
+		)
+		assert expense.amount == amount
+		assert expense.categoryid is None
+		assert expense.category_userid is None
+
+
+@pytest.mark.asyncio
+async def test_update_expense_item_plaid_writes_only_user_overrides(
+	db: MagicMock,
+) -> None:
 	tx = PlaidTransaction(
 		id=9,
 		plaid_item_id=1,
+		transaction_id="transaction-123",
+		account_id="account-456",
 		amount=Decimal("12.34"),
 		transaction_date=date(2026, 5, 2),
 		merchant_name="Market",
@@ -269,15 +306,53 @@ async def test_update_expense_item_plaid_preserves_sign(db: MagicMock) -> None:
 		return None
 
 	db.get = AsyncMock(side_effect=mock_get)
+	db.scalar = AsyncMock(side_effect=[0, 42])
 
-	data = ExpenseUpdate(amount=-25.50)
+	data = ExpenseUpdate(
+		merchant="Local Market",
+		description="Groceries",
+		categoryid=42,
+	)
 	result = await update_expense_item(
 		db, user_id=7, source="plaid", item_id=9, data=data
 	)
 
 	assert result is not None
-	assert result["amount"] == -25.50
-	assert tx.amount == -25.50
+	assert tx.amount == Decimal("12.34")
+	assert tx.user_merchant == "Local Market"
+	assert tx.user_note == "Groceries"
+	assert tx.categoryid == 42
+	assert tx.category_userid == 0
+	assert result["categoryid"] == 42
+
+
+@pytest.mark.asyncio
+async def test_update_expense_item_rejects_plaid_amount_or_date_changes(
+	db: MagicMock,
+) -> None:
+	tx = PlaidTransaction(
+		id=9,
+		plaid_item_id=1,
+		transaction_id="transaction-123",
+		account_id="account-456",
+		amount=Decimal("12.34"),
+		transaction_date=date(2026, 5, 2),
+		name="CARD PURCHASE",
+		pending=False,
+	)
+	item = PlaidItem(id=1, user_id=7)
+	db.get = AsyncMock(side_effect=[tx, item])
+
+	with pytest.raises(PlaidExpenseFieldsError):
+		await update_expense_item(
+			db,
+			user_id=7,
+			source="plaid",
+			item_id=9,
+			data=ExpenseUpdate(amount=Decimal("25.50")),
+		)
+
+	db.commit.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -285,8 +360,7 @@ async def test_update_expense_item_manual_preserves_sign(db: MagicMock) -> None:
 	expense = Expense(
 		expenseid=1,
 		userid=7,
-		amount_dollars=10,
-		amount_cents=0,
+		amount=Decimal("10.00"),
 		note="Coffee",
 		merchant="Cafe",
 		spent_on=date(2026, 5, 3),
@@ -301,6 +375,26 @@ async def test_update_expense_item_manual_preserves_sign(db: MagicMock) -> None:
 
 	assert result is not None
 	assert result["amount"] == -15.50
-	assert expense.amount_dollars == -15
-	assert expense.amount_cents == 50
+	assert expense.amount == Decimal("-15.50")
 
+
+@pytest.mark.asyncio
+async def test_delete_expense_item_hides_plaid_transaction(db: MagicMock) -> None:
+	tx = PlaidTransaction(
+		id=9,
+		plaid_item_id=1,
+		transaction_id="transaction-123",
+		account_id="account-456",
+		amount=Decimal("12.34"),
+		transaction_date=date(2026, 5, 2),
+		name="CARD PURCHASE",
+		pending=False,
+	)
+	item = PlaidItem(id=1, user_id=7)
+	db.get = AsyncMock(side_effect=[tx, item])
+
+	assert await delete_expense_item(db, 7, "plaid", 9)
+
+	assert tx.hidden is True
+	db.delete.assert_not_awaited()
+	db.commit.assert_awaited_once()

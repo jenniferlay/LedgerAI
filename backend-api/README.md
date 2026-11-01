@@ -91,13 +91,13 @@ Database schema scripts are located in `db-schemas/`. The API does not create or
 - `POST /auth/login` - Authenticate with email and password; returns an HS256 JWT bearer token valid for 7 days.
 
 ### Expenses (`/expenses`)
-- `POST /expenses` - Create a manual expense (`amount_dollars`, `amount_cents`, `note`, `spent_on`, `merchant`, `categoryid`).
+- `POST /expenses` - Create a manual expense (`amount`, `note`, `spent_on`, `merchant`, `categoryid`). Positive amounts are spending; negative amounts are income or refunds.
 - `GET /expenses` - Combined feed of manual expenses and Plaid-synced transactions. Supports filtering by `start_date`, `end_date`, `categoryid`, `merchant`, `limit` (max 500), and `offset`.
-- `PUT /expenses/{source}/{item_id}` - Update a manual or Plaid transaction (note, amount, merchant, spent_on, categoryid).
-- `DELETE /expenses/{source}/{item_id}` - Delete a manual expense or Plaid transaction item.
+- `PUT /expenses/{source}/{item_id}` - Update a manual expense or a Plaid transaction's note, merchant, or category override. Plaid amounts and dates are read-only.
+- `DELETE /expenses/{source}/{item_id}` - Delete a manual expense or hide a Plaid transaction from the feed and budgets.
 
 ### Categories (`/categories`)
-- `GET /categories` - List all system global categories and user-created custom categories with hierarchical parent relationships.
+- `GET /categories` - List Plaid taxonomy categories and user-created custom categories with hierarchical parent relationships.
 - `POST /categories` - Create a custom category (`name`, optional `parent_categoryid`, optional Material icon). Subcategories can only be nested one level deep.
 
 ### Budgets (`/budgets`)
@@ -117,4 +117,3 @@ Database schema scripts are located in `db-schemas/`. The API does not create or
   ```powershell
   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
   ```
-

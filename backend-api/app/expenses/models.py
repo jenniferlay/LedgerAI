@@ -1,6 +1,8 @@
 from datetime import date
 
-from sqlalchemy import BigInteger, Date, Integer, SmallInteger, String, Text
+from decimal import Decimal
+
+from sqlalchemy import BigInteger, Date, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -13,8 +15,7 @@ class Expense(Base):
 	userid: Mapped[int] = mapped_column(BigInteger)
 	categoryid: Mapped[int | None] = mapped_column(BigInteger)
 	category_userid: Mapped[int | None] = mapped_column(BigInteger)
-	amount_dollars: Mapped[int] = mapped_column(Integer)
-	amount_cents: Mapped[int] = mapped_column(SmallInteger)
+	amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
 	note: Mapped[str] = mapped_column(Text)
 	merchant: Mapped[str | None] = mapped_column(String(255))
 	spent_on: Mapped[date] = mapped_column(Date)

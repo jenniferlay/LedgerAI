@@ -52,8 +52,9 @@ export default function UpdateExpenseScreen({
   isDeleting,
 }: Props) {
   const rawAmount = initialValues.amount ?? '';
+  const isPlaid = initialValues.source === 'plaid';
   const initialType: TransactionType =
-    initialValues.type ?? (rawAmount.trim().startsWith('-') ? 'expense' : rawAmount.trim() ? 'income' : 'expense');
+    initialValues.type ?? (rawAmount.trim().startsWith('-') ? 'income' : 'expense');
   const initialAmount = rawAmount.trim().replace('-', '');
 
   const [values, setValues] = useState<ExpenseFormValues>({
@@ -62,7 +63,7 @@ export default function UpdateExpenseScreen({
     merchant: initialValues.merchant ?? '',
     note: initialValues.note ?? '',
     spentOn: initialValues.spentOn ?? getTodayIsoDate(),
-    categoryId: initialValues.categoryId ?? 1,
+    categoryId: initialValues.categoryId ?? null,
   });
   const [errors, setErrors] = useState<ExpenseFormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -103,13 +104,24 @@ export default function UpdateExpenseScreen({
 
     setIsSubmitting(true);
     try {
-      await updateExpense(initialValues.source, initialValues.itemId, result.payload);
+      const payload = isPlaid
+        ? {
+            ...(values.merchant !== (initialValues.merchant ?? '') && {
+              merchant: result.payload.merchant,
+            }),
+            ...(values.note !== (initialValues.note ?? '') && {
+              note: result.payload.note,
+            }),
+            ...(values.categoryId !== (initialValues.categoryId ?? null) && {
+              categoryid: values.categoryId,
+            }),
+          }
+        : result.payload;
+      await updateExpense(initialValues.source, initialValues.itemId, payload);
       if (onDone) {
         onDone(result.payload);
       } else {
-        const formattedAmount = `$${result.payload.amount_dollars}.${String(
-          result.payload.amount_cents,
-        ).padStart(2, '0')}`;
+        const formattedAmount = `$${Math.abs(result.payload.amount).toFixed(2)}`;
         Alert.alert(
           'Expense Saved',
           `Successfully saved expense of ${formattedAmount} for "${result.payload.note}".`,
@@ -128,24 +140,27 @@ export default function UpdateExpenseScreen({
 
   return (
     <AddFormLayout
-      title={values.type === 'income' ? 'Edit Income' : 'Edit Expense'}
+      title={isPlaid ? 'Edit Transaction' : values.type === 'income' ? 'Edit Income' : 'Edit Expense'}
       onCancel={onCancel}
       onDelete={onDelete}
       isDeleting={isDeleting}
       contentTopSpacing={spacing.sm}
     >
-      <ExpenseTypeToggle
-        value={values.type}
-        onChange={(type) => setFieldValue('type', type)}
-      />
-
-      <AmountField
-        value={values.amount}
-        type={values.type}
-        error={errors.amount}
-        onChangeText={(text) => setFieldValue('amount', text)}
-        onBlur={() => handleBlurField('amount')}
-      />
+      {!isPlaid && (
+        <>
+          <ExpenseTypeToggle
+            value={values.type}
+            onChange={(type) => setFieldValue('type', type)}
+          />
+          <AmountField
+            value={values.amount}
+            type={values.type}
+            error={errors.amount}
+            onChangeText={(text) => setFieldValue('amount', text)}
+            onBlur={() => handleBlurField('amount')}
+          />
+        </>
+      )}
 
       <MerchantField
         value={values.merchant}
@@ -161,12 +176,14 @@ export default function UpdateExpenseScreen({
         onBlur={() => handleBlurField('note')}
       />
 
-      <DateField
-        value={values.spentOn}
-        error={errors.spentOn}
-        onChangeText={(text) => setFieldValue('spentOn', text)}
-        onBlur={() => handleBlurField('spentOn')}
-      />
+      {!isPlaid && (
+        <DateField
+          value={values.spentOn}
+          error={errors.spentOn}
+          onChangeText={(text) => setFieldValue('spentOn', text)}
+          onBlur={() => handleBlurField('spentOn')}
+        />
+      )}
 
       <CategorySelectField
         selectedId={values.categoryId}
@@ -174,8 +191,8 @@ export default function UpdateExpenseScreen({
       />
 
       <PrimaryActionButton
-        label={values.type === 'income' ? 'Update Income' : 'Update Expense'}
-        accessibilityLabel={values.type === 'income' ? 'Update Income' : 'Update Expense'}
+        label={isPlaid ? 'Save Changes' : values.type === 'income' ? 'Update Income' : 'Update Expense'}
+        accessibilityLabel={isPlaid ? 'Save Changes' : values.type === 'income' ? 'Update Income' : 'Update Expense'}
         icon="check"
         iconPosition="before"
         onPress={handleSave}

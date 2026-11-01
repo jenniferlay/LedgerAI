@@ -5,8 +5,7 @@ import type { ExpensePayload } from '@/components/expenses/types';
 const ExpenseResponseSchema = z.object({
   expenseid: z.number(),
   categoryid: z.number().nullable(),
-  amount_dollars: z.number(),
-  amount_cents: z.number(),
+  amount: z.number(),
   note: z.string(),
   merchant: z.string().nullable(),
   spent_on: z.string(),
@@ -46,7 +45,7 @@ export function subscribeToExpenseUpdates(listener: () => void): () => void {
   return () => expenseUpdateListeners.delete(listener);
 }
 
-function invalidateExpenseCache(): void {
+export function invalidateExpenseCache(): void {
   expenseCacheVersion += 1;
   expenseCache.clear();
   pendingExpenseRequests.clear();
@@ -178,19 +177,15 @@ export async function getExpenses(limit = 5): Promise<ExpenseFeedItem[]> {
 export async function updateExpense(
   source: string,
   itemId: number,
-  payload: ExpensePayload,
+  payload: Partial<ExpensePayload>,
 ): Promise<ExpenseFeedItem> {
   const token = await requireAuth('updating expenses');
-  const isNegative = payload.amount_dollars < 0 || Object.is(payload.amount_dollars, -0);
-  const totalAmount = Math.abs(payload.amount_dollars) + payload.amount_cents / 100;
-  const amount = isNegative ? -totalAmount : totalAmount;
-
   const body = {
-    amount,
-    description: payload.note,
-    merchant: payload.merchant,
-    spent_on: payload.spent_on,
-    categoryid: payload.categoryid,
+    ...(source === 'manual' && payload.amount !== undefined && { amount: payload.amount }),
+    ...(payload.note !== undefined && { description: payload.note }),
+    ...(payload.merchant !== undefined && { merchant: payload.merchant }),
+    ...(source === 'manual' && payload.spent_on !== undefined && { spent_on: payload.spent_on }),
+    ...(payload.categoryid !== undefined && { categoryid: payload.categoryid }),
   };
 
   const expense = await request(`/expenses/${source}/${itemId}`, ExpenseFeedItemSchema, {

@@ -120,7 +120,9 @@ def test_update_expense_item_route(monkeypatch: pytest.MonkeyPatch) -> None:
 	assert data["merchant"] == "Updated Cafe"
 
 
-def test_post_expense_route_income(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_post_expense_route_returns_single_signed_amount(
+	monkeypatch: pytest.MonkeyPatch,
+) -> None:
 	monkeypatch.setitem(
 		app.dependency_overrides,
 		get_current_user,
@@ -133,9 +135,8 @@ def test_post_expense_route_income(monkeypatch: pytest.MonkeyPatch) -> None:
 		AsyncMock(
 			return_value=SimpleNamespace(
 				expenseid=10,
-				categoryid=1,
-				amount_dollars=-50,
-				amount_cents=25,
+				categoryid=None,
+				amount=Decimal("-50.25"),
 				note="Freelance Work",
 				merchant="Client",
 				spent_on=date(2026, 5, 3),
@@ -147,8 +148,7 @@ def test_post_expense_route_income(monkeypatch: pytest.MonkeyPatch) -> None:
 		response = client.post(
 			"/expenses",
 			json={
-				"amount_dollars": -50,
-				"amount_cents": 25,
+				"amount": -50.25,
 				"note": "Freelance Work",
 				"merchant": "Client",
 			},
@@ -156,8 +156,32 @@ def test_post_expense_route_income(monkeypatch: pytest.MonkeyPatch) -> None:
 
 	assert response.status_code == 201
 	data = response.json()
-	assert data["amount_dollars"] == -50
-	assert data["amount_cents"] == 25
+	assert data["amount"] == -50.25
+	assert data["categoryid"] is None
+
+
+def test_post_expense_with_missing_category_returns_404(
+	monkeypatch: pytest.MonkeyPatch,
+) -> None:
+	monkeypatch.setitem(
+		app.dependency_overrides,
+		get_current_user,
+		lambda: SimpleNamespace(userid=7),
+	)
+	monkeypatch.setitem(app.dependency_overrides, get_db, lambda: AsyncMock())
+	monkeypatch.setattr(
+		routes,
+		"create_expense",
+		AsyncMock(side_effect=routes.CategoryNotFoundError),
+	)
+
+	with TestClient(app) as client:
+		response = client.post(
+			"/expenses",
+			json={"amount": 0.5, "note": "Coffee", "categoryid": 999},
+		)
+
+	assert response.status_code == 404
 
 
 def test_delete_expense_item_route(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -176,5 +200,4 @@ def test_delete_expense_item_route(monkeypatch: pytest.MonkeyPatch) -> None:
 	with TestClient(app) as client:
 		response = client.delete("/expenses/manual/1")
 
-	assert response.status_code == 204
-
+	assert response.status_code == 200

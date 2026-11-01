@@ -18,6 +18,18 @@ class CategoryExistsError(Exception):
 	pass
 
 
+async def get_category_owner(
+	db: AsyncSession, user_id: int, categoryid: int
+) -> int | None:
+	"""Return the category's owner if it is user-owned or global."""
+	return await db.scalar(
+		select(Category.userid).where(
+			Category.categoryid == categoryid,
+			Category.userid.in_((user_id, 0)),
+		)
+	)
+
+
 async def list_categories(db: AsyncSession, user_id: int) -> list[Category]:
 	statement = (
 		select(Category)

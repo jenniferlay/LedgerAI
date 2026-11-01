@@ -14,14 +14,13 @@ from app.expenses.schemas import (
 	ExpenseUpdate,
 )
 from app.expenses.service import (
+	CategoryNotFoundError,
+	PlaidExpenseFieldsError,
 	create_expense,
 	delete_expense_item,
 	list_expense_feed,
 	update_expense_item,
 )
-from app.category.service import list_categories
-
-
 router = APIRouter(prefix="/expenses", tags=["expenses"])
 
 
@@ -31,7 +30,13 @@ async def post_expense(
 	current_user: CurrentUser,
 	db: Annotated[AsyncSession, Depends(get_db)],
 ) -> ExpenseResponse:
-	expense = await create_expense(db, current_user.userid, expense_data)
+	try:
+		expense = await create_expense(db, current_user.userid, expense_data)
+	except CategoryNotFoundError:
+		raise HTTPException(
+			status_code=status.HTTP_404_NOT_FOUND,
+			detail="Category not found",
+		)
 	return ExpenseResponse.model_validate(expense)
 
 
@@ -84,7 +89,20 @@ async def update_expense(
 			detail="Source must be 'manual' or 'plaid'",
 		)
 
-	updated = await update_expense_item(db, current_user.userid, source, item_id, expense_data)
+	try:
+		updated = await update_expense_item(
+			db, current_user.userid, source, item_id, expense_data
+		)
+	except CategoryNotFoundError:
+		raise HTTPException(
+			status_code=status.HTTP_404_NOT_FOUND,
+			detail="Category not found",
+		)
+	except PlaidExpenseFieldsError:
+		raise HTTPException(
+			status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+			detail="Plaid transaction amounts and dates cannot be edited",
+		)
 	if not updated:
 		raise HTTPException(
 			status_code=status.HTTP_404_NOT_FOUND,
@@ -113,5 +131,3 @@ async def delete_expense(
 			detail="Expense item not found",
 		)
 	return DeleteResponse(message="Expense item deleted successfully")
-
-
