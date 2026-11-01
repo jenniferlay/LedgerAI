@@ -64,7 +64,7 @@ def test_get_accounts_returns_linked_accounts(client: TestClient) -> None:
   response = client.get("/plaid/accounts")
   assert response.status_code == 200
   data = response.json()
-  assert len(data) == 2
+  assert len(data) == 3
   assert data[0]["account_id"] == "acc-credit-456"
   assert data[0]["type"] == "credit"
   assert data[0]["subtype"] == "credit card"
@@ -75,6 +75,11 @@ def test_get_accounts_returns_linked_accounts(client: TestClient) -> None:
   assert data[1]["type"] == "depository"
   assert data[1]["subtype"] == "checking"
   assert data[1]["current_balance"] == 2500.50
+
+  assert data[2]["account_id"] == "manual-cash"
+  assert data[2]["name"] == "Cash Wallet"
+  assert data[2]["type"] == "depository"
+  assert data[2]["subtype"] == "cash"
 
 
 def test_get_net_worth_computes_assets_minus_liabilities(client: TestClient) -> None:
@@ -126,7 +131,7 @@ def test_get_net_worth_computes_assets_minus_liabilities(client: TestClient) -> 
   assert data["net_worth"] == 8000.0
   assert data["depository_total"] == 10000.0
   assert data["credit_total"] == 2000.0
-  assert data["account_count"] == 3
+  assert data["account_count"] == 4
 
 
 def test_update_account_status_toggles_active(client: TestClient) -> None:
@@ -205,3 +210,22 @@ def test_disconnect_item_not_found(client: TestClient) -> None:
   response = client.delete("/plaid/items/non-existent")
   assert response.status_code == 404
   assert response.json() == {"detail": "Plaid item not found"}
+
+
+def test_get_net_worth_includes_manual_income_and_expenses(client: TestClient) -> None:
+  db = AsyncMock()
+  scalars_mock = MagicMock()
+  scalars_mock.all.return_value = []
+  db.scalars = AsyncMock(return_value=scalars_mock)
+  # manual_cash = +$1250.00 (e.g. $1500 income minus $250 expenses)
+  db.scalar = AsyncMock(return_value=Decimal("1250.00"))
+  app.dependency_overrides[get_db] = lambda: db
+
+  response = client.get("/plaid/accounts/net-worth")
+  assert response.status_code == 200
+  data = response.json()
+  assert data["manual_cash"] == 1250.0
+  assert data["total_assets"] == 1250.0
+  assert data["total_liabilities"] == 0.0
+  assert data["net_worth"] == 1250.0
+  assert data["account_count"] == 1

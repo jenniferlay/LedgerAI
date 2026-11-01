@@ -107,14 +107,14 @@ async def list_expense_feed(
 		Expense.note.label("description"),
 		cast(Expense.categoryid, BigInteger).label("categoryid"),
 		literal(None, type_=String).label("transaction_id"),
-		literal(None, type_=String).label("account_id"),
+		literal("manual-cash", type_=String).label("account_id"),
 		literal(None, type_=Boolean).label("pending"),
-		literal(None, type_=String).label("currency"),
+		literal("USD", type_=String).label("currency"),
 		literal(False, type_=Boolean).label("is_transfer"),
-		literal(None, type_=String).label("account_name"),
+		literal("Cash Wallet", type_=String).label("account_name"),
 		literal(None, type_=String).label("account_mask"),
-		literal(None, type_=String).label("account_type"),
-		literal(None, type_=String).label("account_subtype"),
+		literal("depository", type_=String).label("account_type"),
+		literal("cash", type_=String).label("account_subtype"),
 	).where(Expense.userid == user_id)
 
 	plaid_query = (

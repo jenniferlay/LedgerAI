@@ -43,6 +43,7 @@ export const NetWorthSchema = z.object({
   total_liabilities: z.number(),
   depository_total: z.number(),
   credit_total: z.number(),
+  manual_cash: z.number().default(0),
   currency: z.string().default('USD'),
   account_count: z.number(),
 });

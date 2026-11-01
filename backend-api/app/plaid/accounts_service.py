@@ -1,10 +1,11 @@
 from decimal import Decimal
 
 from plaid.model.item_remove_request import ItemRemoveRequest
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
+from app.expenses.models import Expense
 from app.plaid.client import get_plaid_client
 from app.plaid.models import PlaidAccount, PlaidItem
 from app.plaid.schemas import NetWorthResponse, PlaidAccountResponse
@@ -55,6 +56,35 @@ async def get_user_accounts(
         is_active=account.is_active,
       )
     )
+
+  manual_statement = select(
+    func.coalesce(func.sum(-Expense.amount), Decimal("0.00"))
+  ).where(Expense.userid == user_id)
+  raw_manual_cash = await db.scalar(manual_statement)
+  manual_cash = (
+    Decimal(str(raw_manual_cash))
+    if isinstance(raw_manual_cash, (Decimal, int, float))
+    else Decimal("0.00")
+  )
+
+  accounts.append(
+    PlaidAccountResponse(
+      id=0,
+      item_id="manual",
+      account_id="manual-cash",
+      name="Cash Wallet",
+      official_name="Physical Cash & Manual Wallet",
+      type="depository",
+      subtype="cash",
+      mask=None,
+      current_balance=float(manual_cash),
+      available_balance=float(manual_cash),
+      credit_limit=None,
+      iso_currency_code="USD",
+      is_active=True,
+    )
+  )
+
   return accounts
 
 
@@ -95,6 +125,21 @@ async def compute_net_worth(
       else:
         total_liabilities += abs(bal)
 
+  manual_statement = select(
+    func.coalesce(func.sum(-Expense.amount), Decimal("0.00"))
+  ).where(Expense.userid == user_id)
+  raw_manual_cash = await db.scalar(manual_statement)
+  if isinstance(raw_manual_cash, (Decimal, int, float)):
+    manual_cash = Decimal(str(raw_manual_cash))
+  else:
+    manual_cash = Decimal("0.00")
+
+  if manual_cash >= 0:
+    total_assets += manual_cash
+    depository_total += manual_cash
+  else:
+    total_liabilities += abs(manual_cash)
+
   net_worth = total_assets - total_liabilities
 
   return NetWorthResponse(
@@ -103,8 +148,9 @@ async def compute_net_worth(
     total_liabilities=float(total_liabilities),
     depository_total=float(depository_total),
     credit_total=float(credit_total),
+    manual_cash=float(manual_cash),
     currency="USD",
-    account_count=len(accounts),
+    account_count=len(accounts) + 1,
   )
 
 
@@ -114,6 +160,32 @@ async def set_account_active_status(
   account_id: str,
   is_active: bool,
 ) -> PlaidAccountResponse:
+  if account_id == "manual-cash":
+    manual_statement = select(
+      func.coalesce(func.sum(-Expense.amount), Decimal("0.00"))
+    ).where(Expense.userid == user_id)
+    raw_manual_cash = await db.scalar(manual_statement)
+    manual_cash = (
+      Decimal(str(raw_manual_cash))
+      if isinstance(raw_manual_cash, (Decimal, int, float))
+      else Decimal("0.00")
+    )
+    return PlaidAccountResponse(
+      id=0,
+      item_id="manual",
+      account_id="manual-cash",
+      name="Cash Wallet",
+      official_name="Physical Cash & Manual Wallet",
+      type="depository",
+      subtype="cash",
+      mask=None,
+      current_balance=float(manual_cash),
+      available_balance=float(manual_cash),
+      credit_limit=None,
+      iso_currency_code="USD",
+      is_active=is_active,
+    )
+
   statement = (
     select(PlaidAccount, PlaidItem.item_id)
     .join(PlaidItem, PlaidAccount.plaid_item_id == PlaidItem.id)
@@ -179,4 +251,3 @@ async def disconnect_plaid_item(
 
   await db.delete(item)
   await db.commit()
-

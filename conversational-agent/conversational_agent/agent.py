@@ -58,6 +58,7 @@ class NetWorthRecord(BaseModel):
   total_liabilities: float
   depository_total: float
   credit_total: float
+  manual_cash: float = 0.0
   currency: str = "USD"
   account_count: int
 

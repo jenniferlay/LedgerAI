@@ -8,7 +8,7 @@ import { useAuth } from '@/context/auth';
 import PrimaryActionButton from '@/components/shared/PrimaryActionButton';
 import type { LinkExit } from 'react-native-plaid-link-sdk';
 import { createLinkToken, exchangePublicToken, getNetWorth } from '@/services/plaid-api';
-import { invalidateExpenseCache } from '@/services/expenses-api';
+import { invalidateExpenseCache, subscribeToExpenseUpdates } from '@/services/expenses-api';
 import RecentActivity from '@/components/RecentActivity';
 import NetWorthCard from '@/components/NetWorthCard';
 import BudgetCard from '@/components/BudgetCard';
@@ -49,6 +49,10 @@ export default function AppHomeScreen() {
 
   React.useEffect(() => {
     void loadNetWorth();
+    const unsubscribe = subscribeToExpenseUpdates(() => {
+      void loadNetWorth();
+    });
+    return unsubscribe;
   }, [loadNetWorth]);
 
   const [budgets, setBudgets] = useState<Budget[]>([

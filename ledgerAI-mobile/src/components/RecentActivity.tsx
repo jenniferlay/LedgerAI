@@ -61,16 +61,16 @@ function toActivityItem(item: ExpenseFeedItem): ActivityItem {
       : 'expense';
 
   let categoryLabel: string;
-  if (item.source === 'manual') {
-    categoryLabel = isIncome ? 'Manual income' : 'Manual expense';
-  } else if (isTransfer) {
+  if (isTransfer) {
     categoryLabel = 'Transfer / Payment';
   } else if (item.account_name) {
     categoryLabel = item.account_mask
       ? `${item.account_name} (•${item.account_mask})`
       : item.account_name;
   } else {
-    categoryLabel = 'Bank transaction';
+    categoryLabel = item.source === 'manual'
+      ? (isIncome ? 'Manual income' : 'Manual expense')
+      : 'Bank transaction';
   }
 
   const sign = isTransfer ? '' : isIncome ? '+' : '-';
