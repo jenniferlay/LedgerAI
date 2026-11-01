@@ -85,7 +85,7 @@ export default function AddExpenseScreen({
     if (!result.isValid || !result.payload) {
       setErrors(result.errors);
       Alert.alert(
-        'Incomplete Expense',
+        'Incomplete Cash Transaction',
         'Please correct the highlighted fields before saving.',
       );
       return;
@@ -99,14 +99,14 @@ export default function AddExpenseScreen({
       } else {
         const formattedAmount = '$' + Math.abs(result.payload.amount).toFixed(2);
         Alert.alert(
-          'Expense Saved',
-          'Successfully saved expense of ' + formattedAmount + ' for "' + result.payload.note + '".',
+          'Cash Transaction Saved',
+          'Successfully saved ' + (result.payload.amount < 0 ? 'cash income' : 'cash expense') + ' of ' + formattedAmount + ' for "' + result.payload.note + '".',
           [{ text: 'OK', onPress: resetForm }],
         );
       }
     } catch (error) {
       Alert.alert(
-        'Unable to Save Expense',
+        'Unable to Save Cash Transaction',
         error instanceof Error ? error.message : 'An unexpected error occurred.',
       );
     } finally {
@@ -119,7 +119,7 @@ export default function AddExpenseScreen({
 
   return (
     <AddFormLayout
-      title={values.type === 'income' ? 'Log Income' : 'Log Expense'}
+      title={values.type === 'income' ? 'Log Cash Income' : 'Log Cash Expense'}
       onCancel={isTab ? resetForm : onCancel}
       cancelLabel={isTab ? 'Clear' : undefined}
       cancelIcon={isTab ? 'refresh' : undefined}
@@ -165,8 +165,8 @@ export default function AddExpenseScreen({
       />
 
       <PrimaryActionButton
-        label={values.type === 'income' ? 'Save Income' : 'Save Expense'}
-        accessibilityLabel={values.type === 'income' ? 'Save Income' : 'Save Expense'}
+        label={values.type === 'income' ? 'Save Cash Income' : 'Save Cash Expense'}
+        accessibilityLabel={values.type === 'income' ? 'Save Cash Income' : 'Save Cash Expense'}
         icon="check"
         iconPosition="before"
         onPress={handleSave}

@@ -96,7 +96,7 @@ export default function UpdateExpenseScreen({
     if (!result.isValid || !result.payload) {
       setErrors(result.errors);
       Alert.alert(
-        'Incomplete Expense',
+        'Incomplete Transaction',
         'Please correct the highlighted fields before saving.',
       );
       return;
@@ -123,14 +123,14 @@ export default function UpdateExpenseScreen({
       } else {
         const formattedAmount = `$${Math.abs(result.payload.amount).toFixed(2)}`;
         Alert.alert(
-          'Expense Saved',
-          `Successfully saved expense of ${formattedAmount} for "${result.payload.note}".`,
+          'Transaction Saved',
+          `Successfully saved transaction of ${formattedAmount} for "${result.payload.note}".`,
           [{ text: 'OK', onPress: onCancel }],
         );
       }
     } catch (error) {
       Alert.alert(
-        'Unable to Save Expense',
+        'Unable to Save Transaction',
         error instanceof Error ? error.message : 'An unexpected error occurred.',
       );
     } finally {
@@ -140,7 +140,7 @@ export default function UpdateExpenseScreen({
 
   return (
     <AddFormLayout
-      title={isPlaid ? 'Edit Transaction' : values.type === 'income' ? 'Edit Income' : 'Edit Expense'}
+      title={isPlaid ? 'Edit Bank Transaction' : values.type === 'income' ? 'Edit Cash Income' : 'Edit Cash Expense'}
       onCancel={onCancel}
       onDelete={onDelete}
       isDeleting={isDeleting}
@@ -191,8 +191,8 @@ export default function UpdateExpenseScreen({
       />
 
       <PrimaryActionButton
-        label={isPlaid ? 'Save Changes' : values.type === 'income' ? 'Update Income' : 'Update Expense'}
-        accessibilityLabel={isPlaid ? 'Save Changes' : values.type === 'income' ? 'Update Income' : 'Update Expense'}
+        label={isPlaid ? 'Save Changes' : values.type === 'income' ? 'Save Cash Income' : 'Save Cash Expense'}
+        accessibilityLabel={isPlaid ? 'Save Changes' : values.type === 'income' ? 'Save Cash Income' : 'Save Cash Expense'}
         icon="check"
         iconPosition="before"
         onPress={handleSave}

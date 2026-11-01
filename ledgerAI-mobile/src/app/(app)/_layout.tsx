@@ -62,9 +62,9 @@ export default function AppLayout() {
       <Tabs.Screen
         name="add-expense"
         options={{
-          title: 'Add Expense',
+          title: 'Cash',
           tabBarIcon: ({ color }) => (
-            <Ionicons name="add-circle-outline" size={24} color={color} />
+            <Ionicons name="cash-outline" size={24} color={color} />
           ),
         }}
       />

@@ -69,7 +69,7 @@ function toActivityItem(item: ExpenseFeedItem): ActivityItem {
       : item.account_name;
   } else {
     categoryLabel = item.source === 'manual'
-      ? (isIncome ? 'Manual income' : 'Manual expense')
+      ? (isIncome ? 'Cash income' : 'Cash expense')
       : 'Bank transaction';
   }
 
@@ -145,7 +145,7 @@ function ActivityCard({ item, router }: { item: ActivityItem; router: any }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Edit expense ${item.merchant}, ${item.amount}`}
+      accessibilityLabel={`Edit transaction ${item.merchant}, ${item.amount}`}
       onPress={() => {
         router.push({
           pathname: '/(app)/(home)/update-expense',
