@@ -3,6 +3,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View
 import { MaterialIcons } from '@expo/vector-icons';
 import theme from '@/constants/theme';
 import { getCategories, subscribeToCategoryUpdates, type CategoryResponse } from '@/services/categories-api';
+import { sortCategoriesByPriority } from '@/utils/category-priority';
 import type { IconName } from './data';
 
 const { colors, spacing, borderRadius, typography } = theme;
@@ -21,7 +22,8 @@ export function ParentCategoryDropdown({ selectedParentId, onSelect }: Props) {
     try {
       const items = await getCategories();
       // Only allow root categories (parent_categoryid is null) as parent categories
-      setCategories(items.filter((c) => c.parent_categoryid === null));
+      const roots = items.filter((c) => c.parent_categoryid === null);
+      setCategories(sortCategoriesByPriority(roots));
     } catch {
       // Fallback to empty if offline/error
     } finally {
@@ -64,6 +66,11 @@ export function ParentCategoryDropdown({ selectedParentId, onSelect }: Props) {
             <View style={styles.selectedRow}>
               <MaterialIcons name={getIconName(selectedCategory.icon)} size={16} color={colors.primary} />
               <Text style={styles.selectedText}>{selectedCategory.name}</Text>
+              {selectedCategory.is_custom && (
+                <View style={styles.customBadge}>
+                  <Text style={styles.customBadgeText}>Custom</Text>
+                </View>
+              )}
             </View>
           ) : (
             <Text style={styles.noneText}>None (Top-Level Category)</Text>
@@ -98,10 +105,12 @@ export function ParentCategoryDropdown({ selectedParentId, onSelect }: Props) {
                   setIsOpen(false);
                 }}
               >
-                <MaterialIcons name="label-outline" size={18} color={colors.onSurfaceVariant} />
-                <Text style={[styles.optionText, selectedParentId === null && styles.optionTextActive]}>
-                  None (Top-Level Category)
-                </Text>
+                <View style={styles.optionLeft}>
+                  <MaterialIcons name="label-outline" size={18} color={colors.onSurfaceVariant} />
+                  <Text style={[styles.optionText, selectedParentId === null && styles.optionTextActive]}>
+                    None (Top-Level Category)
+                  </Text>
+                </View>
                 {selectedParentId === null && (
                   <MaterialIcons name="check" size={18} color={colors.primary} />
                 )}
@@ -126,10 +135,17 @@ export function ParentCategoryDropdown({ selectedParentId, onSelect }: Props) {
                         setIsOpen(false);
                       }}
                     >
-                      <MaterialIcons name={getIconName(cat.icon)} size={18} color={colors.primary} />
-                      <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
-                        {cat.name}
-                      </Text>
+                      <View style={styles.optionLeft}>
+                        <MaterialIcons name={getIconName(cat.icon)} size={18} color={colors.primary} />
+                        <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
+                          {cat.name}
+                        </Text>
+                        {cat.is_custom && (
+                          <View style={styles.customBadge}>
+                            <Text style={styles.customBadgeText}>Custom</Text>
+                          </View>
+                        )}
+                      </View>
                       {isSelected && (
                         <MaterialIcons name="check" size={18} color={colors.primary} />
                       )}
@@ -155,7 +171,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   dropdownButton: {
     width: '100%',
@@ -179,69 +195,90 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    flex: 1,
   },
   selectedText: {
-    ...typography.labelMd,
+    ...typography.bodyMd,
     color: colors.onSurface,
     fontWeight: '600',
   },
   noneText: {
-    ...typography.labelMd,
+    ...typography.bodyMd,
     color: colors.onSurfaceVariant,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'center',
-    padding: spacing.margin,
+    alignItems: 'center',
+    padding: spacing.md,
   },
   modalContent: {
-    backgroundColor: colors.surfaceContainer,
-    borderRadius: borderRadius.xxl,
+    width: '100%',
     maxHeight: '70%',
-    overflow: 'hidden',
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: borderRadius.xxl,
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: 'rgba(60, 74, 66, 0.4)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 20,
   },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(60, 74, 66, 0.2)',
+    marginBottom: spacing.md,
   },
   modalTitle: {
-    ...typography.titleMedium,
+    ...typography.headlineSm,
     color: colors.onSurface,
-    fontWeight: '600',
   },
   listContainer: {
-    padding: spacing.sm,
+    gap: 4,
   },
   optionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    justifyContent: 'space-between',
     paddingVertical: 12,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: 12,
     borderRadius: borderRadius.lg,
   },
   optionItemActive: {
-    backgroundColor: colors.surfaceContainerHigh,
+    backgroundColor: 'rgba(78, 222, 163, 0.12)',
   },
-  optionText: {
-    ...typography.bodyMedium,
-    color: colors.onSurface,
+  optionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
     flex: 1,
   },
+  optionText: {
+    ...typography.bodyMd,
+    color: colors.onSurface,
+  },
   optionTextActive: {
-    fontWeight: '600',
     color: colors.primary,
+    fontWeight: '600',
+  },
+  customBadge: {
+    backgroundColor: 'rgba(78, 222, 163, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  customBadgeText: {
+    ...typography.labelSm,
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: '600',
   },
   loaderContainer: {
-    padding: spacing.xl,
+    padding: spacing.lg,
     alignItems: 'center',
   },
 });

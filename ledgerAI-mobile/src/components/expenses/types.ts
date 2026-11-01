@@ -11,6 +11,7 @@ export interface ExpenseCategoryOption {
   icon: IconName;
   parentId?: number | null;
   parentName?: string | null;
+  isCustom?: boolean;
 }
 
 export interface ExpenseFormValues {

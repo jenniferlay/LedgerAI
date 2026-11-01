@@ -6,6 +6,8 @@ const CategoryResponseSchema = z.object({
   parent_categoryid: z.number().nullable(),
   name: z.string(),
   icon: z.string().nullable(),
+  userid: z.number().optional().default(0),
+  is_custom: z.boolean().optional().default(false),
 });
 
 export type CategoryResponse = z.infer<typeof CategoryResponseSchema>;
@@ -70,7 +72,7 @@ async function requireAuth(action: string): Promise<string> {
 
 async function request<T>(
   path: string,
-  schema: z.ZodType<T>,
+  schema: z.ZodType<T, any, any>,
   options: { method?: string; body?: unknown; token: string },
 ): Promise<T> {
   if (!API_BASE_URL) {

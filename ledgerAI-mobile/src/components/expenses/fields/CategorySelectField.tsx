@@ -12,17 +12,10 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import theme from '@/constants/theme';
 import { getCategories, subscribeToCategoryUpdates } from '@/services/categories-api';
+import { sortCategoriesByPriority } from '@/utils/category-priority';
 import type { ExpenseCategoryOption, IconName } from '../types';
 
 const { colors, spacing, borderRadius, typography } = theme;
-
-const PREFERRED_COMMON_NAMES = [
-  'Food And Drink',
-  'General Merchandise',
-  'Transportation',
-  'Entertainment',
-  'Rent And Utilities',
-];
 
 interface Props {
   selectedId: number | null;
@@ -65,6 +58,7 @@ export default function CategorySelectField({
             parentName: category.parent_categoryid
               ? parentMap.get(category.parent_categoryid) ?? null
               : null,
+            isCustom: category.is_custom || (category.userid ? category.userid > 0 : false),
           }));
 
           setAllCategories(mapped);
@@ -88,60 +82,53 @@ export default function CategorySelectField({
     };
   }, [categories]);
 
-  // Compute common categories (~5)
-  const commonCategories = useMemo(() => {
-    const list: ExpenseCategoryOption[] = [];
+  // Compute prioritized chips: all user-created categories first, then common ones
+  const prioritizedChips = useMemo(() => {
+    const userCategories = sortCategoriesByPriority(allCategories.filter((c) => c.isCustom));
+    const commonCategories = sortCategoriesByPriority(allCategories.filter((c) => !c.isCustom));
 
-    // 1. Match preferred common names first
-    for (const prefName of PREFERRED_COMMON_NAMES) {
-      const match = allCategories.find(
-        (c) => c.name.toLowerCase() === prefName.toLowerCase(),
-      );
-      if (match && !list.some((existing) => existing.id === match.id)) {
-        list.push(match);
+    const list: ExpenseCategoryOption[] = [...userCategories];
+    for (const cat of commonCategories) {
+      if (list.length >= 8) break;
+      if (!list.some((existing) => existing.id === cat.id)) {
+        list.push(cat);
       }
     }
-
-    // 2. If fewer than 5, fill with other root categories
-    if (list.length < 5) {
-      for (const c of allCategories) {
-        if (list.length >= 5) break;
-        if (c.parentId == null && !list.some((existing) => existing.id === c.id)) {
-          list.push(c);
-        }
-      }
-    }
-
     return list;
   }, [allCategories]);
 
-  // Check if currently selected category is already in the common 5
+  // Check if currently selected category is already in the prioritized chips
   const selectedCategory = useMemo(() => {
     if (selectedId === null) return null;
     return allCategories.find((c) => c.id === selectedId) ?? null;
   }, [allCategories, selectedId]);
 
-  const isSelectedInCommon = useMemo(() => {
+  const isSelectedInChips = useMemo(() => {
     if (selectedId === null) return true;
-    return commonCategories.some((c) => c.id === selectedId);
-  }, [commonCategories, selectedId]);
+    return prioritizedChips.some((c) => c.id === selectedId);
+  }, [prioritizedChips, selectedId]);
 
-  // Search filter for modal
+  // Prioritized list for modal
+  const sortedCategories = useMemo(() => {
+    return sortCategoriesByPriority(allCategories);
+  }, [allCategories]);
+
+  // Search filter for modal (maintains priority ordering)
   const filteredCategories = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return allCategories;
-    return allCategories.filter((c) => {
+    if (!q) return sortedCategories;
+    return sortedCategories.filter((c) => {
       const matchesName = c.name.toLowerCase().includes(q);
       const matchesParent = c.parentName?.toLowerCase().includes(q);
       return matchesName || matchesParent;
     });
-  }, [allCategories, searchQuery]);
+  }, [sortedCategories, searchQuery]);
 
   return (
     <View style={styles.wrapper}>
       <Text style={styles.label}>Category</Text>
 
-      {/* Horizontal common chips + More button */}
+      {/* Horizontal prioritized chips + More button */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -169,8 +156,8 @@ export default function CategorySelectField({
           </Text>
         </Pressable>
 
-        {/* If selected item is not in common 5, display it here so the user sees it */}
-        {selectedCategory && !isSelectedInCommon && (
+        {/* If selected item is not in the chips, display it here so the user sees it */}
+        {selectedCategory && !isSelectedInChips && (
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ selected: true }}
@@ -188,8 +175,8 @@ export default function CategorySelectField({
           </Pressable>
         )}
 
-        {/* Common 5 Categories */}
-        {commonCategories.map((category) => {
+        {/* Prioritized Categories (User-created first, then common) */}
+        {prioritizedChips.map((category) => {
           const isSelected = selectedId === category.id;
           return (
             <Pressable
@@ -215,6 +202,9 @@ export default function CategorySelectField({
               >
                 {category.name}
               </Text>
+              {category.isCustom && (
+                <View style={styles.chipCustomDot} />
+              )}
             </Pressable>
           );
         })}
@@ -231,11 +221,11 @@ export default function CategorySelectField({
             size={18}
             color={colors.primary}
           />
-          <Text style={styles.moreChipText}>More...</Text>
+          <Text style={[styles.chipText, styles.moreChipText]}>More...</Text>
         </Pressable>
       </ScrollView>
 
-      {/* More Categories Search Modal */}
+      {/* Searchable Modal for All Categories */}
       <Modal
         visible={isModalOpen}
         transparent
@@ -274,7 +264,7 @@ export default function CategorySelectField({
               </Pressable>
             </View>
 
-            {/* Search Bar - matching IconGrid / Create Category styling */}
+            {/* Search Bar */}
             <View style={styles.searchSection}>
               <View style={styles.searchBar}>
                 <MaterialIcons
@@ -379,14 +369,21 @@ export default function CategorySelectField({
                       />
                     </View>
                     <View style={styles.optionDetails}>
-                      <Text
-                        style={[
-                          styles.optionText,
-                          isSelected && styles.optionTextActive,
-                        ]}
-                      >
-                        {cat.name}
-                      </Text>
+                      <View style={styles.nameRow}>
+                        <Text
+                          style={[
+                            styles.optionText,
+                            isSelected && styles.optionTextActive,
+                          ]}
+                        >
+                          {cat.name}
+                        </Text>
+                        {cat.isCustom && (
+                          <View style={styles.customBadge}>
+                            <Text style={styles.customBadgeText}>Custom</Text>
+                          </View>
+                        )}
+                      </View>
                       {cat.parentName && (
                         <Text style={styles.parentSubtitle}>
                           {cat.parentName}
@@ -427,11 +424,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   scrollList: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    alignItems: 'center',
+    gap: spacing.xs,
     paddingVertical: 2,
   },
   chip: {
@@ -443,7 +441,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     backgroundColor: colors.surfaceContainerLow,
     borderWidth: 1,
-    borderColor: 'rgba(60, 74, 66, 0.4)',
+    borderColor: 'transparent',
   },
   chipSelected: {
     backgroundColor: colors.primaryContainer,
@@ -455,128 +453,148 @@ const styles = StyleSheet.create({
   },
   chipTextSelected: {
     color: colors.onPrimaryContainer,
-    fontWeight: '700',
+    fontWeight: '600',
+  },
+  chipCustomDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: colors.primary,
   },
   moreChip: {
-    borderColor: 'rgba(78, 222, 163, 0.4)',
-    backgroundColor: colors.surfaceContainer,
+    backgroundColor: colors.surfaceContainerHigh,
+    borderWidth: 1,
+    borderColor: 'rgba(78, 222, 163, 0.25)',
   },
   moreChipText: {
-    ...typography.labelMd,
     color: colors.primary,
     fontWeight: '600',
   },
-  // Modal styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'center',
-    padding: spacing.margin,
+    alignItems: 'center',
+    padding: spacing.md,
   },
   modalContent: {
-    backgroundColor: colors.surfaceContainer,
-    borderRadius: borderRadius.xxl,
+    width: '100%',
     maxHeight: '80%',
-    overflow: 'hidden',
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: borderRadius.xxl,
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: 'rgba(60, 74, 66, 0.4)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 20,
+    gap: spacing.md,
   },
   modalHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(60, 74, 66, 0.2)',
   },
   modalTitle: {
-    ...typography.titleMedium,
+    ...typography.headlineSm,
     color: colors.onSurface,
-    fontWeight: '700',
   },
   modalSubtitle: {
-    ...typography.labelSm,
+    ...typography.bodySm,
     color: colors.onSurfaceVariant,
     marginTop: 2,
   },
   searchSection: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(60, 74, 66, 0.15)',
+    width: '100%',
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
     backgroundColor: colors.surfaceContainerHigh,
-    borderRadius: borderRadius.xl,
     paddingHorizontal: 12,
-    height: 42,
+    height: 44,
+    borderRadius: borderRadius.xl,
+    gap: 8,
   },
   searchInput: {
-    flex: 1,
-    height: '100%',
-    fontSize: 14,
+    ...typography.bodyMd,
     color: colors.onSurface,
+    flex: 1,
     padding: 0,
   },
   clearSearchButton: {
     padding: 4,
   },
   listContainer: {
-    padding: spacing.sm,
-    paddingBottom: spacing.lg,
+    gap: 4,
+    paddingVertical: 4,
   },
   optionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
     paddingVertical: 10,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: 12,
     borderRadius: borderRadius.lg,
+    gap: 12,
   },
   optionItemActive: {
-    backgroundColor: colors.surfaceContainerHigh,
+    backgroundColor: 'rgba(78, 222, 163, 0.12)',
   },
   iconCircle: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: borderRadius.full,
     backgroundColor: colors.surfaceContainerHigh,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconCircleActive: {
-    backgroundColor: colors.primaryContainer,
+    backgroundColor: colors.primary,
   },
   optionDetails: {
     flex: 1,
-    justifyContent: 'center',
+    gap: 2,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   optionText: {
-    ...typography.bodyMedium,
+    ...typography.bodyLg,
     color: colors.onSurface,
-    fontWeight: '500',
   },
   optionTextActive: {
     color: colors.primary,
-    fontWeight: '700',
+    fontWeight: '600',
+  },
+  customBadge: {
+    backgroundColor: 'rgba(78, 222, 163, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  customBadgeText: {
+    ...typography.labelSm,
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: '600',
   },
   parentSubtitle: {
-    ...typography.labelSm,
-    color: colors.onSurfaceVariant,
-    marginTop: 1,
+    ...typography.bodySm,
+    color: colors.outline,
   },
   emptyContainer: {
-    padding: spacing.xl,
     alignItems: 'center',
-    gap: spacing.sm,
+    justifyContent: 'center',
+    paddingVertical: 32,
+    gap: 8,
   },
   emptyText: {
-    ...typography.bodyMedium,
-    color: colors.onSurfaceVariant,
+    ...typography.bodyMd,
+    color: colors.outline,
     textAlign: 'center',
   },
 });

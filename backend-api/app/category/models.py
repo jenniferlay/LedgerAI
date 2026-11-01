@@ -12,3 +12,7 @@ class Category(Base):
 	name: Mapped[str] = mapped_column(String(100))
 	icon: Mapped[str | None] = mapped_column(String(50))
 	plaid_code: Mapped[str | None] = mapped_column(String(100), unique=True)
+
+	@property
+	def is_custom(self) -> bool:
+		return self.userid != 0

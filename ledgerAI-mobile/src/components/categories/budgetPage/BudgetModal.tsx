@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import theme from '@/constants/theme';
 import { getCategories, CategoryResponse } from '@/services/categories-api';
 import { createBudget, updateBudget, deleteBudget } from '@/services/budgets-api';
+import { sortCategoriesByPriority } from '@/utils/category-priority';
 
 const { colors, spacing, borderRadius, typography } = theme;
 
@@ -90,13 +91,17 @@ export default function BudgetModal({
     return categories.find((c) => c.categoryid === selectedCategoryId) ?? null;
   }, [budget, categories, selectedCategoryId]);
 
+  const prioritizedCategories = useMemo(() => {
+    return sortCategoriesByPriority(categories);
+  }, [categories]);
+
   const filteredCategories = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return categories.filter((c) => {
+    return prioritizedCategories.filter((c) => {
       if (!q) return true;
       return c.name.toLowerCase().includes(q);
     });
-  }, [categories, searchQuery]);
+  }, [prioritizedCategories, searchQuery]);
 
   const handleSave = async () => {
     setErrorMessage(null);
@@ -292,6 +297,11 @@ export default function BudgetModal({
                               >
                                 {cat.name}
                               </Text>
+                              {cat.is_custom && (
+                                <View style={styles.customBadge}>
+                                  <Text style={styles.customBadgeText}>Custom</Text>
+                                </View>
+                              )}
                             </View>
                             {hasExistingBudget && (
                               <View style={styles.hasBudgetBadge}>
@@ -515,6 +525,18 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: borderRadius.sm,
     marginRight: 6,
+  },
+    customBadge: {
+    backgroundColor: 'rgba(78, 222, 163, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  customBadgeText: {
+    ...typography.labelSm,
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: '600',
   },
   hasBudgetText: {
     ...typography.labelSm,

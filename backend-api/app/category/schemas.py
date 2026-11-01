@@ -31,3 +31,5 @@ class CategoryResponse(BaseModel):
 	parent_categoryid: int | None
 	name: str
 	icon: str | None  # plain str on output so a stale stored value never causes a 500
+	userid: int = 0
+	is_custom: bool = False
