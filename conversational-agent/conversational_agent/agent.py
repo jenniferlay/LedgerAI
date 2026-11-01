@@ -108,7 +108,7 @@ advisor_agent = Agent(
   "google:gemini-3.1-flash-lite",
   deps_type=AgentDeps,
   system_prompt=(
-    "Your name is Marty. Always introduce yourself as Marty if asked who you are. "
+    "Your name is Marty. If asked who you are, always introduce yourself as Marty. "
     "You are a friendly, down-to-earth personal financial advisor. "
     "You have tools to inspect the user's spending history (`lookup_spending`), linked bank accounts and balances "
     "(`lookup_accounts`), total net worth (`lookup_net_worth`), and monthly budgets (`lookup_budgets`). "
@@ -207,16 +207,18 @@ async def lookup_budgets(
 
 
 async def get_agent_deps() -> AgentDeps:
-  access_token = getpass.getpass("LedgerAI access token: ").strip()
+  access_token = (os.getenv("LEDGERAI_ACCESS_TOKEN") or os.getenv("ACCESS_TOKEN") or "").strip()
+  if not access_token:
+    access_token = getpass.getpass("LedgerAI access token: ").strip()
   if not access_token:
     raise ValueError("An access token is required to query your expenses.")
 
   api_base_url = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+  headers = {"Authorization": f"Bearer {access_token}"}
   async with httpx.AsyncClient(timeout=10) as client:
-    response = await client.get(
-      f"{api_base_url}/expenses/categories",
-      headers={"Authorization": f"Bearer {access_token}"},
-    )
+    response = await client.get(f"{api_base_url}/categories", headers=headers)
+    if response.status_code == 404:
+      response = await client.get(f"{api_base_url}/expenses/categories", headers=headers)
     response.raise_for_status()
     categories = TypeAdapter(list[CategoryRecord]).validate_python(response.json())
 

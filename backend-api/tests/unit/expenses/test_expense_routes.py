@@ -219,3 +219,43 @@ def test_delete_expense_item_route(monkeypatch: pytest.MonkeyPatch) -> None:
 		response = client.delete("/expenses/manual/1")
 
 	assert response.status_code == 200
+
+
+def test_get_expenses_categories_route(monkeypatch: pytest.MonkeyPatch) -> None:
+	monkeypatch.setitem(
+		app.dependency_overrides,
+		get_current_user,
+		lambda: SimpleNamespace(userid=7),
+	)
+	monkeypatch.setitem(app.dependency_overrides, get_db, lambda: AsyncMock())
+	monkeypatch.setattr(
+		routes,
+		"list_categories",
+		AsyncMock(
+			return_value=[
+				SimpleNamespace(
+					categoryid=1,
+					parent_categoryid=None,
+					name="Food",
+					icon="restaurant",
+					userid=0,
+					is_custom=False,
+				)
+			]
+		),
+	)
+
+	with TestClient(app) as client:
+		response = client.get("/expenses/categories")
+
+	assert response.status_code == 200
+	assert response.json() == [
+		{
+			"categoryid": 1,
+			"parent_categoryid": None,
+			"name": "Food",
+			"icon": "restaurant",
+			"userid": 0,
+			"is_custom": False,
+		}
+	]
