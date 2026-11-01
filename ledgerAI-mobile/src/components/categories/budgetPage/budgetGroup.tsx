@@ -6,7 +6,27 @@ import ProgressBar from '@/components/categories/budgetPage/progressBar';
 import { BudgetGroupData } from '@/services/budgets-api';
 import { formatMoney, percent } from '@/components/categories/budgetPage/format';
 
-export default function BudgetGroup({ group }: { group: BudgetGroupData }) {
+export interface BudgetEditItem {
+  budgetid: number;
+  categoryid: number;
+  name: string;
+  amount: number;
+  icon?: string | null;
+}
+
+export interface BudgetAddItem {
+  categoryid: number;
+  name: string;
+  icon?: string | null;
+}
+
+interface Props {
+  group: BudgetGroupData;
+  onEditBudget?: (budget: BudgetEditItem) => void;
+  onAddBudget?: (item: BudgetAddItem) => void;
+}
+
+export default function BudgetGroup({ group, onEditBudget, onAddBudget }: Props) {
   const [expanded, setExpanded] = useState(true);
 
   const spent = group.spent;
@@ -33,6 +53,45 @@ export default function BudgetGroup({ group }: { group: BudgetGroupData }) {
               <Text style={styles.parentSpent}>{formatMoney(spent)}</Text>
               <Text style={styles.muted}>/ {formatMoney(limit)}</Text>
             </View>
+
+            {group.budgetid !== null && onEditBudget ? (
+              <Pressable
+                accessibilityLabel="Edit category budget"
+                accessibilityRole="button"
+                hitSlop={8}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onEditBudget({
+                    budgetid: group.budgetid!,
+                    categoryid: group.id,
+                    name: group.name,
+                    amount: group.limit,
+                    icon: group.icon,
+                  });
+                }}
+                style={({ pressed }) => [styles.editIconBtn, pressed && { opacity: 0.6 }]}
+              >
+                <MaterialIcons name="edit" size={16} color={colors.outline} />
+              </Pressable>
+            ) : group.budgetid === null && onAddBudget ? (
+              <Pressable
+                accessibilityLabel="Set budget for this group"
+                accessibilityRole="button"
+                hitSlop={8}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onAddBudget({
+                    categoryid: group.id,
+                    name: group.name,
+                    icon: group.icon,
+                  });
+                }}
+                style={({ pressed }) => [styles.editIconBtn, pressed && { opacity: 0.6 }]}
+              >
+                <MaterialIcons name="add" size={18} color={colors.primary} />
+              </Pressable>
+            ) : null}
+
             <MaterialIcons
               name="expand-more"
               size={20}
@@ -49,16 +108,36 @@ export default function BudgetGroup({ group }: { group: BudgetGroupData }) {
         <View style={styles.children}>
           <View style={styles.line} />
           {group.children.map((c) => (
-            <View key={c.id} style={styles.child}>
+            <Pressable
+              key={c.id}
+              style={({ pressed }) => [styles.child, pressed && { opacity: 0.7 }]}
+              onPress={() => {
+                onEditBudget?.({
+                  budgetid: c.budgetid,
+                  categoryid: c.id,
+                  name: c.name,
+                  amount: c.limit,
+                  icon: c.icon,
+                });
+              }}
+            >
               <View style={styles.childTop}>
-                <Text style={styles.childName}>{c.name}</Text>
+                <View style={styles.childNameRow}>
+                  <Text style={styles.childName}>{c.name}</Text>
+                  <MaterialIcons
+                    name="edit"
+                    size={13}
+                    color={colors.outline}
+                    style={{ marginLeft: 5 }}
+                  />
+                </View>
                 <View style={styles.amountRow}>
                   <Text style={styles.childSpent}>{formatMoney(c.spent)}</Text>
                   <Text style={styles.muted}>/ {formatMoney(c.limit)}</Text>
                 </View>
               </View>
               <ProgressBar value={percent(c.spent, c.limit)} color={colors.primary} />
-            </View>
+            </Pressable>
           ))}
         </View>
       )}
@@ -87,6 +166,11 @@ const styles = StyleSheet.create({
   parentSpent: { ...typography.labelLg, color: colors.onSurface },
   muted: { ...typography.bodySm, color: colors.outline },
 
+  editIconBtn: {
+    padding: 4,
+    marginRight: 2,
+  },
+
   children: { paddingLeft: 44, paddingRight: spacing.md, paddingBottom: spacing.md, gap: 12 },
   line: {
     position: 'absolute',
@@ -98,6 +182,7 @@ const styles = StyleSheet.create({
   },
   child: { gap: 6 },
   childTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  childName: { ...typography.bodyMd, color: colors.onSurfaceVariant },
+  childNameRow: { flexDirection: 'row', alignItems: 'center' },
+  childName: { ...typography.bodyMd, color: colors.onSurface },
   childSpent: { ...typography.labelMd, color: colors.onSurface },
 });

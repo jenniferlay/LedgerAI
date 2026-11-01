@@ -30,9 +30,34 @@ const BudgetSummaryResponseSchema = z.object({
   groups: z.array(BudgetGroupResponseSchema),
 });
 
+export const BudgetResponseSchema = z.object({
+  budgetid: z.number(),
+  categoryid: z.number(),
+  parent_categoryid: z.number().nullable(),
+  name: z.string(),
+  icon: z.string().nullable(),
+  amount: z.number(),
+  spent: z.number(),
+  remaining: z.number(),
+});
+
+const DeleteResponseSchema = z.object({
+  message: z.string(),
+});
+
 export type SubBudget = z.infer<typeof SubBudgetResponseSchema>;
 export type BudgetGroupData = z.infer<typeof BudgetGroupResponseSchema>;
 export type BudgetSummary = z.infer<typeof BudgetSummaryResponseSchema>;
+export type BudgetResponse = z.infer<typeof BudgetResponseSchema>;
+
+export interface CreateBudgetPayload {
+  categoryid: number;
+  amount: number;
+}
+
+export interface UpdateBudgetPayload {
+  amount: number;
+}
 
 const ErrorBodySchema = z.object({
   detail: z.union([z.string(), z.array(z.object({ msg: z.string() }))]),
@@ -57,9 +82,13 @@ function getErrorMessage(body: unknown, status: number): string {
   return detail.map((item) => item.msg).join(' ') || fallback;
 }
 
-export async function getBudgetsSummary(month?: string): Promise<BudgetSummary> {
+async function budgetRequest<T>(
+  path: string,
+  schema: z.ZodType<T>,
+  options: { method?: string; body?: unknown } = {},
+): Promise<T> {
   if (!API_BASE_URL) {
-    throw new Error('Set EXPO_PUBLIC_API_URL to the backend API address before loading budgets.');
+    throw new Error('Set EXPO_PUBLIC_API_URL to the backend API address before calling budgets.');
   }
 
   const token = await getAccessToken();
@@ -67,20 +96,20 @@ export async function getBudgetsSummary(month?: string): Promise<BudgetSummary> 
     throw new Error(SESSION_EXPIRED);
   }
 
-  const url = month ? `/budgets?month=${encodeURIComponent(month)}` : '/budgets';
-
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
     let response: Response;
     try {
-      response = await fetch(`${API_BASE_URL}${url}`, {
-        method: 'GET',
+      response = await fetch(`${API_BASE_URL}${path}`, {
+        method: options.method ?? 'GET',
         headers: {
           Authorization: `Bearer ${token}`,
+          ...(options.body !== undefined && { 'Content-Type': 'application/json' }),
           Accept: 'application/json',
         },
+        body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
         signal: controller.signal,
       });
     } catch (error) {
@@ -100,10 +129,7 @@ export async function getBudgetsSummary(month?: string): Promise<BudgetSummary> 
     let json: unknown;
     try {
       json = await response.json();
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('The request timed out. Check your connection and try again.');
-      }
+    } catch {
       throw new Error(`The server returned an invalid response (${response.status}).`);
     }
 
@@ -111,16 +137,44 @@ export async function getBudgetsSummary(month?: string): Promise<BudgetSummary> 
       throw new Error(getErrorMessage(json, response.status));
     }
 
-    const parsed = BudgetSummaryResponseSchema.safeParse(json);
+    const parsed = schema.safeParse(json);
     if (!parsed.success) {
       if (__DEV__) {
-        console.error('BudgetSummaryResponse validation error:', parsed.error);
+        console.error('Budget API validation error:', parsed.error);
       }
-      throw new Error('The server returned an invalid budget summary response.');
+      throw new Error('The server returned an invalid budget response.');
     }
 
     return parsed.data;
   } finally {
     clearTimeout(timeoutId);
   }
+}
+
+export async function getBudgetsSummary(month?: string): Promise<BudgetSummary> {
+  const url = month ? `/budgets?month=${encodeURIComponent(month)}` : '/budgets';
+  return budgetRequest(url, BudgetSummaryResponseSchema);
+}
+
+export async function createBudget(payload: CreateBudgetPayload): Promise<BudgetResponse> {
+  return budgetRequest('/budgets', BudgetResponseSchema, {
+    method: 'POST',
+    body: payload,
+  });
+}
+
+export async function updateBudget(
+  budgetid: number,
+  payload: UpdateBudgetPayload,
+): Promise<BudgetResponse> {
+  return budgetRequest(`/budgets/${budgetid}`, BudgetResponseSchema, {
+    method: 'PUT',
+    body: payload,
+  });
+}
+
+export async function deleteBudget(budgetid: number): Promise<{ message: string }> {
+  return budgetRequest(`/budgets/${budgetid}`, DeleteResponseSchema, {
+    method: 'DELETE',
+  });
 }

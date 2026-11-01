@@ -1,13 +1,14 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, RefreshControl } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter, useFocusEffect } from 'expo-router';
 import theme from '@/constants/theme';
 import SummaryCard from '@/components/categories/budgetPage/summaryCard';
-import BudgetGroup from '@/components/categories/budgetPage/budgetGroup';
+import BudgetGroup, { BudgetEditItem, BudgetAddItem } from '@/components/categories/budgetPage/budgetGroup';
 import BudgetSkeleton from '@/components/categories/budgetPage/BudgetSkeleton';
+import BudgetModal, { BudgetModalItem } from '@/components/categories/budgetPage/BudgetModal';
 import { getBudgetsSummary, BudgetSummary } from '@/services/budgets-api';
-import { useRouter } from 'expo-router';
 
 export default function BudgetsScreen() {
   const insets = useSafeAreaInsets();
@@ -15,6 +16,11 @@ export default function BudgetsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Modal state
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalItem, setModalItem] = useState<BudgetModalItem | null>(null);
+
   const router = useRouter();
 
   const fetchBudgets = useCallback(async (isRefresh = false) => {
@@ -37,10 +43,51 @@ export default function BudgetsScreen() {
     fetchBudgets();
   }, [fetchBudgets]);
 
+  // Automatically refresh when returning to this tab/screen
+  useFocusEffect(
+    useCallback(() => {
+      fetchBudgets(true);
+    }, [fetchBudgets]),
+  );
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchBudgets(true);
   }, [fetchBudgets]);
+
+  // Set of category IDs that already have a budget
+  const existingBudgetCategoryIds = useMemo(() => {
+    const set = new Set<number>();
+    if (!summary?.groups) return set;
+    for (const group of summary.groups) {
+      if (group.budgetid !== null) {
+        set.add(group.id);
+      }
+      for (const child of group.children) {
+        set.add(child.id);
+      }
+    }
+    return set;
+  }, [summary]);
+
+  const handleOpenAddBudget = useCallback(() => {
+    setModalItem(null);
+    setModalVisible(true);
+  }, []);
+
+  const handleEditBudget = useCallback((item: BudgetEditItem) => {
+    setModalItem(item);
+    setModalVisible(true);
+  }, []);
+
+  const handleAddBudgetForCategory = useCallback((item: BudgetAddItem) => {
+    setModalItem({
+      categoryid: item.categoryid,
+      name: item.name,
+      icon: item.icon,
+    });
+    setModalVisible(true);
+  }, []);
 
   if (loading && !summary) {
     return <BudgetSkeleton />;
@@ -83,7 +130,14 @@ export default function BudgetsScreen() {
 
         <View style={styles.groups}>
           {summary?.groups && summary.groups.length > 0 ? (
-            summary.groups.map((g) => <BudgetGroup key={g.id} group={g} />)
+            summary.groups.map((g) => (
+              <BudgetGroup
+                key={g.id}
+                group={g}
+                onEditBudget={handleEditBudget}
+                onAddBudget={handleAddBudgetForCategory}
+              />
+            ))
           ) : !loading ? (
             <View style={styles.emptyContainer}>
               <MaterialIcons name="account-balance-wallet" size={48} color={colors.outline} />
@@ -98,7 +152,9 @@ export default function BudgetsScreen() {
         <View style={styles.actions}>
           <Pressable
             style={({ pressed }) => [styles.btn, styles.btnSecondary, pressed && styles.pressed]}
-            onPress={() => {router.push({pathname: "/(app)/(budgets)/add-category"})}}
+            onPress={() => {
+              router.push({ pathname: '/(app)/(budgets)/add-category' });
+            }}
           >
             <MaterialIcons name="add" size={20} color={colors.primary} />
             <Text style={[styles.btnText, { color: colors.onSurface }]}>Add Category</Text>
@@ -106,13 +162,22 @@ export default function BudgetsScreen() {
 
           <Pressable
             style={({ pressed }) => [styles.btn, styles.btnPrimary, pressed && styles.pressed]}
-            onPress={() => {}}
+            onPress={handleOpenAddBudget}
           >
             <MaterialIcons name="add" size={20} color={colors.onPrimaryContainer} />
             <Text style={[styles.btnText, { color: colors.onPrimaryContainer }]}>Add Budget</Text>
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Add / Edit Budget Modal */}
+      <BudgetModal
+        visible={modalVisible}
+        budget={modalItem}
+        existingBudgetCategoryIds={existingBudgetCategoryIds}
+        onClose={() => setModalVisible(false)}
+        onSuccess={() => fetchBudgets(true)}
+      />
     </View>
   );
 }

@@ -172,3 +172,121 @@ const iconPreviewStyles = StyleSheet.create({
     elevation: 10,
   },
 });
+
+interface BudgetFieldProps {
+  value: string;
+  onChangeText: (text: string) => void;
+  error?: string;
+}
+
+export function CategoryBudgetField({ value, onChangeText, error }: BudgetFieldProps) {
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <View style={budgetFieldStyles.wrapper}>
+      <View
+        style={[
+          budgetFieldStyles.container,
+          focused && budgetFieldStyles.containerFocused,
+          Boolean(error) && budgetFieldStyles.containerError,
+        ]}
+      >
+        <View style={budgetFieldStyles.headerRow}>
+          <Text style={budgetFieldStyles.label}>Monthly Budget (Optional)</Text>
+          <View style={budgetFieldStyles.badge}>
+            <Text style={budgetFieldStyles.badgeText}>per month</Text>
+          </View>
+        </View>
+        <View style={budgetFieldStyles.inputRow}>
+          <Text style={budgetFieldStyles.currencyPrefix}>$</Text>
+          <TextInput
+            accessibilityLabel="Monthly budget amount"
+            style={budgetFieldStyles.input}
+            value={value}
+            onChangeText={onChangeText}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholder="0.00"
+            placeholderTextColor="rgba(134, 148, 138, 0.35)"
+            keyboardType="decimal-pad"
+            returnKeyType="done"
+            selectionColor={colors.primary}
+            cursorColor={colors.primary}
+          />
+        </View>
+      </View>
+      {Boolean(error) && <Text style={budgetFieldStyles.errorText}>{error}</Text>}
+    </View>
+  );
+}
+
+const budgetFieldStyles = StyleSheet.create({
+  wrapper: {
+    width: '100%',
+  },
+  container: {
+    width: '100%',
+    backgroundColor: colors.surfaceContainerLow,
+    borderRadius: borderRadius.xl,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  containerFocused: {
+    backgroundColor: colors.surfaceContainer,
+    borderColor: colors.primary,
+  },
+  containerError: {
+    borderColor: colors.error,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  label: {
+    ...typography.labelSm,
+    color: colors.onSurfaceVariant,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  badge: {
+    backgroundColor: colors.surfaceContainerHigh,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: borderRadius.full,
+  },
+  badgeText: {
+    ...typography.labelSm,
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  currencyPrefix: {
+    ...typography.headlineSm,
+    color: colors.primary,
+    fontWeight: '700',
+    marginRight: 6,
+  },
+  input: {
+    ...typography.headlineSm,
+    color: colors.onSurface,
+    letterSpacing: -0.45,
+    flex: 1,
+    padding: 0,
+    margin: 0,
+  },
+  errorText: {
+    ...typography.bodySm,
+    color: colors.error,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+});
