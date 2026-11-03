@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class BudgetCreate(BaseModel):
@@ -15,6 +15,21 @@ class BudgetUpdate(BaseModel):
 	model_config = ConfigDict(extra="forbid")
 
 	amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
+
+
+class BudgetUpsert(BaseModel):
+	model_config = ConfigDict(extra="forbid")
+
+	amount: Decimal = Field(gt=0, max_digits=12, decimal_places=2)
+	categoryid: int | None = Field(default=None, gt=0)
+	category_name: str | None = Field(default=None, max_length=100)
+	create_category_if_missing: bool = True
+
+	@model_validator(mode="after")
+	def check_category_identifier(self) -> "BudgetUpsert":
+		if self.categoryid is None and (not self.category_name or not self.category_name.strip()):
+			raise ValueError("Either categoryid or category_name must be provided")
+		return self
 
 
 class BudgetResponse(BaseModel):

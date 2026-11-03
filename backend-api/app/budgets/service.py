@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
 from app.budgets.models import Budget
-from app.budgets.schemas import BudgetCreate, BudgetUpdate
+from app.budgets.schemas import BudgetCreate, BudgetUpdate, BudgetUpsert
 from app.category.models import Category
 from app.expenses.models import Expense
 from app.plaid.models import (
@@ -452,3 +452,74 @@ async def delete_budget(db: AsyncSession, user_id: int, budgetid: int) -> bool:
 	await db.delete(budget)
 	await db.commit()
 	return True
+
+async def upsert_budget(
+	db: AsyncSession, user_id: int, data: BudgetUpsert
+) -> dict[str, Any]:
+	await _lock_user_budgets(db, user_id)
+
+	category: Category | None = None
+
+	if data.categoryid is not None:
+		category = await db.scalar(
+			select(Category).where(
+				Category.categoryid == data.categoryid,
+				Category.userid.in_((0, user_id)),
+			)
+		)
+
+	if category is None and data.category_name and data.category_name.strip():
+		norm_name = data.category_name.strip()
+		# Prefer user-specific category over global if names match
+		category = await db.scalar(
+			select(Category)
+			.where(
+				func.lower(Category.name) == func.lower(norm_name),
+				Category.userid.in_((0, user_id)),
+			)
+			.order_by(Category.userid.desc())
+			.limit(1)
+		)
+		if category is None and data.create_category_if_missing:
+			category = Category(
+				userid=user_id,
+				parent_categoryid=None,
+				name=norm_name,
+				icon="category",
+			)
+			db.add(category)
+			await db.flush()
+
+	if category is None:
+		await db.rollback()
+		raise CategoryNotFoundError
+
+	# Check if a budget already exists for this category
+	existing_budget = await db.scalar(
+		select(Budget).where(
+			Budget.userid == user_id,
+			Budget.categoryid == category.categoryid,
+			Budget.category_userid == category.userid,
+		)
+	)
+
+	if existing_budget is not None:
+		await _enforce_hierarchy(
+			db, user_id, category, data.amount, budgetid=existing_budget.budgetid
+		)
+		existing_budget.amount = data.amount
+		budgetid = existing_budget.budgetid
+	else:
+		await _enforce_hierarchy(db, user_id, category, data.amount)
+		budget = Budget(
+			userid=user_id,
+			categoryid=category.categoryid,
+			category_userid=category.userid,
+			amount=data.amount,
+		)
+		db.add(budget)
+		await db.flush()
+		budgetid = budget.budgetid
+
+	await db.commit()
+	return await _get_budget_item(db, user_id, budgetid)

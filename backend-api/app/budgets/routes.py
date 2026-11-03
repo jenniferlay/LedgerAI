@@ -10,6 +10,7 @@ from app.budgets.schemas import (
 	BudgetResponse,
 	BudgetSummaryResponse,
 	BudgetUpdate,
+	BudgetUpsert,
 )
 from app.budgets.service import (
 	BudgetExistsError,
@@ -20,6 +21,7 @@ from app.budgets.service import (
 	get_budget,
 	list_budgets,
 	update_budget,
+	upsert_budget,
 )
 from app.db.database import get_db
 from app.expenses.schemas import DeleteResponse
@@ -76,6 +78,27 @@ async def post_budget(
 		raise HTTPException(
 			status_code=status.HTTP_409_CONFLICT,
 			detail="A budget already exists for this category",
+		)
+	except BudgetHierarchyError as exc:
+		raise HTTPException(
+			status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+			detail=str(exc),
+		)
+	return BudgetResponse.model_validate(budget)
+
+
+@router.post("/upsert", response_model=BudgetResponse)
+async def post_upsert_budget(
+	budget_data: BudgetUpsert,
+	current_user: CurrentUser,
+	db: Annotated[AsyncSession, Depends(get_db)],
+) -> BudgetResponse:
+	try:
+		budget = await upsert_budget(db, current_user.userid, budget_data)
+	except CategoryNotFoundError:
+		raise HTTPException(
+			status_code=status.HTTP_404_NOT_FOUND,
+			detail="Category not found",
 		)
 	except BudgetHierarchyError as exc:
 		raise HTTPException(
