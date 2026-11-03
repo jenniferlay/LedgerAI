@@ -33,7 +33,7 @@ export default function AppLayout() {
       />
 
       <Tabs.Screen
-        name="(marty)"
+        name="marty"
         options={{
           title: 'Marty',
           tabBarLabel: () => null, 
@@ -70,7 +70,7 @@ export default function AppLayout() {
       />
 
       <Tabs.Screen
-        name="(budgets)"
+        name="budgets"
         options={{
           title: 'Budgets',
           tabBarIcon: ({ color }) => (

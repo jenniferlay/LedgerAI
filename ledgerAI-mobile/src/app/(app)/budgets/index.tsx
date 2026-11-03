@@ -153,7 +153,7 @@ export default function BudgetsScreen() {
           <Pressable
             style={({ pressed }) => [styles.btn, styles.btnSecondary, pressed && styles.pressed]}
             onPress={() => {
-              router.push({ pathname: '/(app)/(budgets)/add-category' });
+              router.push({ pathname: '/(app)/budgets/add-category' });
             }}
           >
             <MaterialIcons name="add" size={20} color={colors.primary} />
