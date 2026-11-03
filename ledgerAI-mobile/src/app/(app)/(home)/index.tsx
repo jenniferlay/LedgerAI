@@ -249,9 +249,6 @@ export default function AppHomeScreen() {
         )}
         {linkError && <Text style={styles.errorMessage} accessibilityRole="alert">{linkError}</Text>}
         {linkMessage && <Text style={styles.successMessage} accessibilityRole="alert">{linkMessage}</Text>}
-        <Button title="Add Cash Transaction" onPress={() => router.push('/(app)/add-expense')} />
-        <Button title="Add Category" onPress={() => router.push('/(app)/budgets/add-category')} />
-        <Button title="Simulate Logout" onPress={() => void handleSignOut()} />
       </ScrollView>
     </View>
   );
