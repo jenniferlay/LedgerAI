@@ -175,7 +175,7 @@ export default function BudgetModal({
   const handleAddNewCategory = () => {
     Keyboard.dismiss();
     onClose();
-    router.push('/(app)/budgets/add-category');
+    router.push('/(app)/budgets/add-category' as any);
   };
 
   const handleDismiss = () => {

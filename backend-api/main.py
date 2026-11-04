@@ -13,6 +13,7 @@ from app.plaid.errors import register_plaid_error_handlers
 from app.plaid.router import router as plaid_router
 from app.budgets.routes import router as budgets_router
 from app.category.routes import router as category_router
+from app.chat.routes import router as chat_router
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,7 @@ app.include_router(expenses_router)
 app.include_router(plaid_router)
 app.include_router(budgets_router)
 app.include_router(category_router)
+app.include_router(chat_router)
 
 
 @app.exception_handler(SQLAlchemyError)
