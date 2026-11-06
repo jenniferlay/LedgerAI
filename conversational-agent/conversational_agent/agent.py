@@ -28,6 +28,8 @@ from conversational_agent.tools import (
 
 pydantic_ai.BANNER_ENABLED = False
 load_dotenv()
+if os.getenv("GEMINI_API_KEY") and not os.getenv("GOOGLE_API_KEY"):
+  os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
 
 
 def financial_context(categories: list[CategoryRecord]) -> str:
@@ -58,7 +60,7 @@ def financial_context(categories: list[CategoryRecord]) -> str:
   )
 
 
-text_model_name = os.getenv("TEXT_MODEL")
+text_model_name = os.getenv("TEXT_MODEL") or "google:gemini-3.8-flash"
 if not text_model_name:
   raise ValueError(
     "TEXT_MODEL is not set in your .env file. "

@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.budgets.service import list_budgets
 from app.category.service import list_categories
 from app.chat.schemas import ChatAction, ChatHistoryItem, ChatResponse
+from app.core.config import settings
 from app.expenses.service import list_expense_feed
 from app.plaid.accounts_service import compute_net_worth
 
@@ -92,7 +93,7 @@ async def _call_gemini_llm(
     contents.append({"role": role, "parts": [{"text": h.content}]})
   contents.append({"role": "user", "parts": [{"text": prompt}]})
 
-  url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+  url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={api_key}"
   payload = {
     "systemInstruction": {"parts": [{"text": system_instruction}]},
     "contents": contents,
@@ -108,6 +109,17 @@ async def _call_gemini_llm(
           parts = candidates[0].get("content", {}).get("parts", [])
           if parts and "text" in parts[0]:
             return parts[0]["text"].strip()
+      # If 3.8-flash is 503 or busy, try 3.1-flash-lite
+      if res.status_code in (503, 404, 429):
+        fallback_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key={api_key}"
+        res2 = await client.post(fallback_url, json=payload)
+        if res2.status_code == 200:
+          data = res2.json()
+          candidates = data.get("candidates", [])
+          if candidates:
+            parts = candidates[0].get("content", {}).get("parts", [])
+            if parts and "text" in parts[0]:
+              return parts[0]["text"].strip()
   except Exception:
     pass
   return None
@@ -202,18 +214,58 @@ def _generate_rule_based_response(
   )
 
 
+async def _call_agent_microservice(
+  message: str,
+  history: list[ChatHistoryItem],
+  access_token: str | None,
+) -> ChatResponse | None:
+  if not access_token:
+    return None
+
+  agent_url = f"{settings.agent_service_url.rstrip('/')}/chat"
+  headers = {
+    "Authorization": f"Bearer {access_token}",
+    "Content-Type": "application/json",
+  }
+  payload = {
+    "message": message,
+    "history": [{"role": h.role, "content": h.content} for h in history],
+  }
+
+  try:
+    async with httpx.AsyncClient(timeout=35.0) as client:
+      response = await client.post(agent_url, json=payload, headers=headers)
+      if response.status_code == 200:
+        data = response.json()
+        return ChatResponse(
+          response=data.get("response", ""),
+          actions=data.get("actions", []),
+        )
+  except Exception:
+    pass
+  return None
+
+
 async def generate_chat_response(
   db: AsyncSession,
   user_id: int,
   message: str,
   history: list[ChatHistoryItem],
+  access_token: str | None = None,
 ) -> ChatResponse:
+  # 1. Forward to conversational-agent microservice (runs full Pydantic AI agent with live tools)
+  agent_response = await _call_agent_microservice(message, history, access_token)
+  if agent_response:
+    return agent_response
+
+  # 2. Fall back to direct Gemini LLM call if conversational-agent is offline
   context = await _gather_user_financial_context(db, user_id)
-  gemini_key = os.getenv("GEMINI_API_KEY")
+  gemini_key = settings.gemini_api_key or os.getenv("GEMINI_API_KEY")
 
   if gemini_key:
     llm_text = await _call_gemini_llm(message, history, context, gemini_key)
     if llm_text:
       return ChatResponse(response=llm_text)
 
+  # 3. Rule-based fallback
   return _generate_rule_based_response(message, context)

@@ -83,9 +83,12 @@ LedgerAI/
    pip install -r requirements.txt
    ```
 2. Configure `.env` from `.env.example` with your `GEMINI_API_KEY` and `API_BASE_URL`.
-3. Launch text chat or realtime voice mode:
+3. Launch the agent:
    ```powershell
-   # Interactive text chat
+   # HTTP microservice for Web/Mobile UI
+   python main.py --server
+
+   # Interactive text chat (CLI)
    python main.py
 
    # Realtime voice assistant

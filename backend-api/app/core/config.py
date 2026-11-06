@@ -17,6 +17,8 @@ class Settings(BaseSettings):
   plaid_access_token_encryption_key: str | None = None
   plaid_env: Literal["sandbox"] = "sandbox"
   plaid_webhook_url: str | None = None
+  agent_service_url: str = "http://127.0.0.1:8001"
+  gemini_api_key: str | None = None
 
 
 settings = Settings()

@@ -49,17 +49,22 @@ API_BASE_URL=http://127.0.0.1:8000
 
 ### Running the Agent
 
-1. **Text Interface (100% Free / Instant):**
+1. **HTTP Microservice for Web/Mobile UI (Port 8001):**
+   ```powershell
+   python main.py --server
+   ```
+
+2. **Interactive CLI Text Chat:**
    ```powershell
    python main.py
    ```
 
-2. **Non-Multimodal Voice (Deepgram STT -> Marty -> Deepgram TTS):**
+3. **Non-Multimodal Voice (Deepgram STT -> Marty -> Deepgram TTS):**
    ```powershell
    python main.py --voice --nomodal
    ```
 
-3. **Multimodal Realtime Voice (Gemini Live / OpenAI Realtime):**
+4. **Multimodal Realtime Voice (Gemini Live / OpenAI Realtime):**
    ```powershell
    python main.py --voice
    ```
